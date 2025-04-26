@@ -1,0 +1,101 @@
+## Build results
+bin/
+obj/
+out/
+[Ll]og/
+Generated_Code/
+
+## User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vscode/
+.vs/
+.vsconfig
+.env
+
+
+## Rider
+.idea/
+*.sln.iml
+
+## ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+## Visual Studio for Mac
+.vscode/
+.idea/
+*.sln.ide
+
+## Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+## Folder config file
+Desktop.ini
+
+## Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+## VS Code settings
+.vscode/
+
+## npm packages
+node_modules/
+
+## dotnet watch
+
+
+## .NET Core tooling
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+## Others
+*.dbmdl
+*.bak
+*.orig
+*.log
+
+## Auto-generated files
+*.generated.cs
+*.g.cs
+*.g.i.cs
+
+## Publish output
+publish/
+App_Data/
+*.Publish.xml
+
+## Package directories
+*.nupkg
+*.snupkg
+packages/
+.nuget/
+
+# Logs
+*.log
+*.tlog
+*.vshost.*
+*.pidb
+*.svclog
+
+# Test results
+TestResults/
+*.coverage
+*.coveragexml
+*.testsettings
+*.trx
+
+# Resharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# Entity Framework Core
+Migrations/
