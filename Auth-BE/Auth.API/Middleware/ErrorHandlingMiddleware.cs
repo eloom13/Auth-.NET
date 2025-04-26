@@ -2,7 +2,6 @@
 using Auth.Models.Response;
 using System.Net;
 using System.Text.Json;
-
 namespace Auth.API.Middleware
 {
     /// Middleware koji hvata sve neuhvaćene iznimke u aplikaciji i pretvara ih u strukturirane API odgovore
@@ -71,10 +70,22 @@ namespace Auth.API.Middleware
                 default:
                     // 500 Internal Server Error - neočekivana greška
                     logger.LogError(exception, "NEUHVAĆENA IZNIMKA: {ExceptionMessage}", exception.Message);
-                    errorResponse = ApiResponse<object>.ErrorResponse(
-                        "Došlo je do neočekivane greške. Pokušajte ponovo ili kontaktirajte administratora.",
-                        null,
-                        (int)code);
+
+                    // Dodajte ovo za više detalja tijekom razvoja
+                    if (context.RequestServices.GetService<IWebHostEnvironment>().IsDevelopment())
+                    {
+                        errorResponse = ApiResponse<object>.ErrorResponse(
+                            $"Došlo je do neočekivane greške: {exception.Message} | {exception.StackTrace}",
+                            null,
+                            (int)code);
+                    }
+                    else
+                    {
+                        errorResponse = ApiResponse<object>.ErrorResponse(
+                            "Došlo je do neočekivane greške. Pokušajte ponovo ili kontaktirajte administratora.",
+                            null,
+                            (int)code);
+                    }
                     break;
             }
 

@@ -41,7 +41,7 @@ builder.Services.AddIdentity<User, IdentityRole>(options =>
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 builder.Services.Configure<JWTSettings>(jwtSettings);
 
-var secret = jwtSettings["Secret"];
+var secret = "MojFiksniTajniKljucZaTestiranje12345";
 var issuer = jwtSettings["Issuer"];
 var audience = jwtSettings["Audience"];
 var key = Encoding.ASCII.GetBytes(secret);

@@ -38,10 +38,11 @@ namespace Auth.Services.Services
             {
                 Email = request.Email,
                 UserName = request.Email,
-                FirstName = request.FirstName,
-                LastName = request.LastName,
+                FirstName = request.FirstName ?? string.Empty,
+                LastName = request.LastName ?? string.Empty,
                 CreatedAt = DateTime.UtcNow,
-                IsActive = true
+                IsActive = true,
+                RefreshToken = null // Eksplicitno postavljanje null vrijednosti
             };
 
             var result = await _userManager.CreateAsync(user, request.Password);
