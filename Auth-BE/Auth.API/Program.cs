@@ -1,4 +1,4 @@
-using Auth.API.Middleware;
+﻿using Auth.API.Middleware;
 using Auth.Models.Data;
 using Auth.Models.Entities;
 using Auth.Services.Interfaces;
@@ -26,16 +26,16 @@ builder.Services.AddIdentity<User, IdentityRole>(options =>
     options.Password.RequireNonAlphanumeric = true; // Zahtijeva specijalne znakove
     options.Password.RequiredLength = 8; // Minimalna duljina 8 znakova
 
-    // Postavke za zaklju?avanje ra?una nakon previ�e neuspjelih poku�aja
-    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15); // 15 minuta zaklju?avanja
-    options.Lockout.MaxFailedAccessAttempts = 5; // Nakon 5 neuspjelih poku�aja
+    // Postavke za zaključavanje računa nakon previše neuspjelih pokušaja
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15); // 15 minuta zaključavanja
+    options.Lockout.MaxFailedAccessAttempts = 5; // Nakon 5 neuspjelih pokušaja
 
-    // Postavke za email - sprje?ava duplikate email adresa
+    // Postavke za email - sprječava duplikate email adresa
     options.User.RequireUniqueEmail = true;
 
     // Postavke za 2FA - konfiguracija provider-a za dvofaktorsku autentifikaciju
     options.Tokens.AuthenticatorTokenProvider = TokenOptions.DefaultAuthenticatorProvider;
-}).AddEntityFrameworkStores<ApplicationDbContext>() // Sprema podatke o korisnicima u na�u bazu
+}).AddEntityFrameworkStores<ApplicationDbContext>() // Sprema podatke o korisnicima u našu bazu
 .AddDefaultTokenProviders();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -58,7 +58,7 @@ builder.Services.AddAuthentication(options =>
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true, // Provjerava potpis
-        IssuerSigningKey = new SymmetricSecurityKey(key), // Klju? za validaciju potpisa
+        IssuerSigningKey = new SymmetricSecurityKey(key), // Ključ za validaciju potpisa
         ValidateIssuer = true, // Provjerava izdavatelja
         ValidateAudience = true, // Provjerava publiku
         ValidIssuer = issuer, // Dozvoljeni izdavatelj
@@ -106,6 +106,30 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    // Životni vijek cookie-a (ista vrijednost kao refresh token)
+    options.ExpireTimeSpan = TimeSpan.FromDays(7);
+
+    // Putanja za login
+    options.LoginPath = "/api/auth/login";
+
+    // HTTP-only cookie zaštita (onemogućava pristup kroz JavaScript)
+    options.Cookie.HttpOnly = true;
+
+    // Zaštita od CSRF napada
+    options.Cookie.SameSite = SameSiteMode.Strict;
+
+    // Samo HTTPS u produkciji
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+
+    // Naziv cookie-a
+    options.Cookie.Name = "AuthProject.Cookies";
+
+    // Dodatne sigurnosne postavke
+    options.SlidingExpiration = true;
+});
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowSpecificOrigin",
@@ -121,6 +145,7 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    app.UseDeveloperExceptionPage(); // Dodajte ovu liniju
     app.UseSwagger();
     app.UseSwaggerUI();
 }

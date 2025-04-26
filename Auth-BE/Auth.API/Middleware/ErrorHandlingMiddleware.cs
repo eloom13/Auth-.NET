@@ -44,7 +44,7 @@ namespace Auth.API.Middleware
                     errorResponse = ApiResponse<object>.ErrorResponse(notFoundEx.Message, null, (int)code);
                     break;
 
-                case Models.Exceptions.ValidationException validationEx:
+                case ValidationException validationEx:
                     // 400 Bad Request - nevažeći podaci
                     code = HttpStatusCode.BadRequest;
                     errorResponse = ApiResponse<object>.ErrorResponse(validationEx.Message, null, (int)code);
@@ -56,7 +56,7 @@ namespace Auth.API.Middleware
                     errorResponse = ApiResponse<object>.ErrorResponse(forbiddenEx.Message, null, (int)code);
                     break;
 
-                case Models.Exceptions.AuthenticationException authEx:
+                case AuthenticationException authEx:
                     // 401 Unauthorized - pogreška autentifikacije
                     code = HttpStatusCode.Unauthorized;
                     errorResponse = ApiResponse<object>.ErrorResponse(authEx.Message, null, (int)code);
