@@ -42,7 +42,7 @@ namespace Auth.Services.Services
                 LastName = request.LastName ?? string.Empty,
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true,
-                RefreshToken = null // Eksplicitno postavljanje null vrijednosti
+                RefreshToken = null
             };
 
             var result = await _userManager.CreateAsync(user, request.Password);
@@ -135,14 +135,12 @@ namespace Auth.Services.Services
 
         public async Task<string> GenerateTwoFactorCodeAsync(string userId)
         {
-            // Pronalazak korisnika
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
                 throw new NotFoundException("Korisnik", userId);
             }
 
-            // Generiranje jednokratnog koda za 2FA
             return await _userManager.GenerateTwoFactorTokenAsync(
                 user,
                 _userManager.Options.Tokens.AuthenticatorTokenProvider);
@@ -150,14 +148,12 @@ namespace Auth.Services.Services
 
         public async Task<bool> VerifyTwoFactorCodeAsync(string userId, string code)
         {
-            // Pronalazak korisnika
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
                 throw new NotFoundException("Korisnik", userId);
             }
 
-            // Provjera 2FA koda
             return await _userManager.VerifyTwoFactorTokenAsync(
                 user,
                 _userManager.Options.Tokens.AuthenticatorTokenProvider,
@@ -166,14 +162,12 @@ namespace Auth.Services.Services
 
         public async Task<bool> LogoutAsync(string userId)
         {
-            // Pronalazak korisnika
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
                 throw new NotFoundException("Korisnik", userId);
             }
 
-            // Invalidacija refresh tokena
             user.RefreshToken = null;
             user.RefreshTokenExpiryTime = null;
             await _userManager.UpdateAsync(user);
@@ -184,18 +178,14 @@ namespace Auth.Services.Services
 
         private async Task<AuthResponse> GenerateTokensAsync(User user)
         {
-            // Generiranje JWT tokena
             var token = await GenerateJwtTokenAsync(user);
 
-            // Generiranje refresh tokena
             var refreshToken = GenerateRefreshToken();
 
-            // Spremanje refresh tokena u bazu
             user.RefreshToken = refreshToken;
             user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationInDays);
             await _userManager.UpdateAsync(user);
 
-            // Kreiranje odgovora
             return new AuthResponse
             {
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
@@ -207,20 +197,16 @@ namespace Auth.Services.Services
 
         private async Task<JwtSecurityToken> GenerateJwtTokenAsync(User user)
         {
-            // Dohvat korisničkih claimova
             var userClaims = await _userManager.GetClaimsAsync(user);
 
-            // Dohvat korisničkih uloga
             var roles = await _userManager.GetRolesAsync(user);
 
-            // Kreiranje claimova za uloge
             var roleClaims = new List<Claim>();
             foreach (var role in roles)
             {
                 roleClaims.Add(new Claim(ClaimTypes.Role, role));
             }
 
-            // Kombiniranje svih claimova
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id),
@@ -232,11 +218,9 @@ namespace Auth.Services.Services
             .Union(userClaims)
             .Union(roleClaims);
 
-            // Kreiranje ključa za potpisivanje
             var symmetricSecurityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
             var signingCredentials = new SigningCredentials(symmetricSecurityKey, SecurityAlgorithms.HmacSha256);
 
-            // Kreiranje JWT tokena
             var jwtSecurityToken = new JwtSecurityToken(
                 issuer: _jwtSettings.Issuer,
                 audience: _jwtSettings.Audience,
@@ -249,7 +233,6 @@ namespace Auth.Services.Services
 
         private static string GenerateRefreshToken()
         {
-            // Kreiranje random bytea za refresh token
             var randomNumber = new byte[32];
             using var rng = RandomNumberGenerator.Create();
             rng.GetBytes(randomNumber);
@@ -258,21 +241,18 @@ namespace Auth.Services.Services
 
         private ClaimsPrincipal GetPrincipalFromExpiredToken(string token)
         {
-            // Parametri za validaciju tokena - ne provjeravamo istek tokena
             var tokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret)),
                 ValidateIssuer = false,
                 ValidateAudience = false,
-                ValidateLifetime = false // Ne validiramo istek tokena jer on može biti istekao
+                ValidateLifetime = false
             };
 
-            // Validacija tokena
             var tokenHandler = new JwtSecurityTokenHandler();
             var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
 
-            // Provjera je li token valjanog tipa i algoritma
             if (!(securityToken is JwtSecurityToken jwtSecurityToken) ||
                 !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
             {

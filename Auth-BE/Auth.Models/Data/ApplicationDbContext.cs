@@ -11,7 +11,6 @@ namespace Auth.Models.Data
         {
         }
 
-
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);

@@ -7,7 +7,7 @@ using System.Security.Claims;
 
 namespace Auth.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/auth")]
     [ApiController]
     public class AuthController : ControllerBase
     {
@@ -24,10 +24,8 @@ namespace Auth.API.Controllers
         {
             var result = await _authService.RegisterAsync(request);
 
-            // Postavi refresh token kao HTTP-only cookie
             SetRefreshTokenCookie(result.RefreshToken);
 
-            // Ne vraćaj refresh token u odgovoru za dodatnu sigurnost
             result.RefreshToken = null;
 
             return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "Registracija uspješna"));
@@ -40,14 +38,11 @@ namespace Auth.API.Controllers
 
             if (result.RequiresTwoFactor)
             {
-                // Ako je potrebna 2FA, vrati odgovor bez tokena
                 return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "Potrebna je 2FA verifikacija"));
             }
 
-            // Postavi refresh token kao HTTP-only cookie
             SetRefreshTokenCookie(result.RefreshToken);
 
-            // Ne vraćaj refresh token u odgovoru za dodatnu sigurnost
             result.RefreshToken = null;
 
             return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "Prijava uspješna"));
@@ -56,7 +51,6 @@ namespace Auth.API.Controllers
         [HttpPost("refresh-token")]
         public async Task<ActionResult<ApiResponse<AuthResponse>>> RefreshToken([FromBody] RefreshTokenRequest request)
         {
-            // Dohvati refresh token iz HTTP-only cookieja
             var refreshToken = Request.Cookies["refresh_token"];
 
             if (string.IsNullOrEmpty(refreshToken))
@@ -64,7 +58,6 @@ namespace Auth.API.Controllers
                 return Unauthorized(ApiResponse<AuthResponse>.ErrorResponse("Refresh token nije pronađen", null, 401));
             }
 
-            // Kreiraj kompletni zahtjev s refresh tokenom iz cookieja
             var completeRequest = new RefreshTokenRequest
             {
                 Token = request.Token,
@@ -73,10 +66,8 @@ namespace Auth.API.Controllers
 
             var result = await _authService.RefreshTokenAsync(completeRequest);
 
-            // Postavi novi refresh token kao HTTP-only cookie
             SetRefreshTokenCookie(result.RefreshToken);
 
-            // Ne vraćaj refresh token u odgovoru za dodatnu sigurnost
             result.RefreshToken = null;
 
             return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "Token osvježen"));
@@ -87,10 +78,8 @@ namespace Auth.API.Controllers
         {
             var result = await _authService.ValidateTwoFactorAsync(request);
 
-            // Postavi refresh token kao HTTP-only cookie
             SetRefreshTokenCookie(result.RefreshToken);
 
-            // Ne vraćaj refresh token u odgovoru za dodatnu sigurnost
             result.RefreshToken = null;
 
             return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "2FA verifikacija uspješna"));
@@ -130,7 +119,6 @@ namespace Auth.API.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var result = await _authService.LogoutAsync(userId);
 
-            // Obriši refresh token cookie
             Response.Cookies.Delete("refresh_token");
 
             return Ok(ApiResponse<bool>.SuccessResponse(result, "Odjava uspješna"));
@@ -138,7 +126,6 @@ namespace Auth.API.Controllers
 
         private void SetRefreshTokenCookie(string refreshToken)
         {
-            // Postavi refresh token kao HTTP-only cookie (nepristupačan JavaScript-u)
             var cookieOptions = new CookieOptions
             {
                 HttpOnly = true, // Nije dostupan JavaScript-u - zaštita od XSS napada

@@ -31,10 +31,9 @@ namespace Auth.API.Middleware
 
         private static async Task HandleExceptionAsync(HttpContext context, Exception exception, ILogger logger)
         {
-            HttpStatusCode code = HttpStatusCode.InternalServerError; // Pretpostavljeni status kod
+            HttpStatusCode code = HttpStatusCode.InternalServerError;
             var errorResponse = new ApiResponse<object>();
 
-            // Određivanje HTTP status koda i poruke na temelju tipa iznimke
             switch (exception)
             {
                 case NotFoundException notFoundEx:
@@ -89,7 +88,6 @@ namespace Auth.API.Middleware
                     break;
             }
 
-            // Postavljanje status koda i vraćanje JSON odgovora
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)code;
 
