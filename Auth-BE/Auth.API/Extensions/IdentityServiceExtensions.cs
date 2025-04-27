@@ -1,5 +1,6 @@
 ﻿using Auth.Models.Data;
 using Auth.Models.Entities;
+using Auth.Services.Settings;
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -30,7 +31,18 @@ namespace Auth.API.Extensions
             var secret = Env.GetString("JWT_SECRET");
             var issuer = Env.GetString("JWT_ISSUER");
             var audience = Env.GetString("JWT_AUDIENCE");
+
+            services.Configure<JWTSettings>(opts =>
+            {
+                opts.Secret = secret;
+                opts.Issuer = issuer;
+                opts.Audience = audience;
+                opts.ExpirationInMinutes = 60;
+                opts.RefreshTokenExpirationInDays = 30;
+            });
+
             var key = Encoding.ASCII.GetBytes(secret);
+
 
             services.AddAuthentication(options =>
             {
