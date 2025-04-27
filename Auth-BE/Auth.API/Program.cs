@@ -2,6 +2,7 @@
 using Auth.API.Middleware;
 using Auth.Services.Interfaces;
 using Auth.Services.Services;
+using Auth.Services.Settings;
 using DotNetEnv;
 
 Env.Load();
@@ -10,10 +11,18 @@ var builder = WebApplication.CreateBuilder(args);
 
 // === Add services ===
 builder.Services.AddPersistenceServices(builder.Configuration);
+
+// 🔥 OVO TI FALI
 builder.Services.AddIdentityServices(builder.Configuration);
+
+// Registruješ JWT Settings (ok je ovo)
+builder.Services.Configure<JWTSettings>(builder.Configuration.GetSection("JwtSettings"));
+
 builder.Services.AddInfrastructureServices();
 
+// AuthService ovisi o UserManageru ➔ ovo ide TEK nakon Identity-a
 builder.Services.AddScoped<IAuthService, AuthService>();
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

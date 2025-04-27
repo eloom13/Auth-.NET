@@ -124,6 +124,16 @@ namespace Auth.API.Controllers
             return Ok(ApiResponse<bool>.SuccessResponse(result, "Odjava uspješna"));
         }
 
+        [Authorize]
+        [HttpGet("current-user")]
+        public async Task<ActionResult<ApiResponse<CurrentUserResponse>>> GetCurrentUser()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = await _authService.GetCurrentUserAsync(userId);
+
+            return Ok(ApiResponse<CurrentUserResponse>.SuccessResponse(user, "Podaci o korisniku"));
+        }
+
         private void SetRefreshTokenCookie(string refreshToken)
         {
             var cookieOptions = new CookieOptions
