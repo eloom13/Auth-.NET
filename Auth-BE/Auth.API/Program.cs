@@ -3,6 +3,9 @@ using Auth.API.Middleware;
 using Auth.API.Seed;
 using Auth.Services.Interfaces;
 using Auth.Services.Services;
+using DotNetEnv;
+
+Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 

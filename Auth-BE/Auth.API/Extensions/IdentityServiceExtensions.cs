@@ -1,6 +1,6 @@
 ﻿using Auth.Models.Data;
 using Auth.Models.Entities;
-using Auth.Services.Settings;
+using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
@@ -10,7 +10,7 @@ namespace Auth.API.Extensions
 {
     public static class IdentityServiceExtensions
     {
-        public static IServiceCollection AddIdentityServices(this IServiceCollection services, IConfiguration config)
+        public static IServiceCollection AddIdentityServices(this IServiceCollection services, ConfigurationManager configuration)
         {
             services.AddIdentity<User, IdentityRole>(options =>
             {
@@ -27,12 +27,9 @@ namespace Auth.API.Extensions
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
 
-            var jwtSettings = config.GetSection("JwtSettings");
-            services.Configure<JWTSettings>(jwtSettings);
-
-            var secret = jwtSettings["Secret"];
-            var issuer = jwtSettings["Issuer"];
-            var audience = jwtSettings["Audience"];
+            var secret = Env.GetString("JWT_SECRET");
+            var issuer = Env.GetString("JWT_ISSUER");
+            var audience = Env.GetString("JWT_AUDIENCE");
             var key = Encoding.ASCII.GetBytes(secret);
 
             services.AddAuthentication(options =>
@@ -44,7 +41,7 @@ namespace Auth.API.Extensions
             {
                 options.RequireHttpsMetadata = false;
                 options.SaveToken = true;
-                options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(key),
@@ -54,6 +51,23 @@ namespace Auth.API.Extensions
                     ValidAudience = audience,
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.Zero
+                };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var token = context.Request.Headers["Authorization"].FirstOrDefault();
+                        if (!string.IsNullOrEmpty(token))
+                        {
+                            // Ako NE počinje sa "Bearer ", pretpostavljamo da je čisti JWT
+                            if (!token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                            {
+                                context.Token = token;
+                            }
+                        }
+                        return Task.CompletedTask;
+                    }
                 };
             });
 
