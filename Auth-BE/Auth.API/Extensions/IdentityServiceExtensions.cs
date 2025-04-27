@@ -67,7 +67,17 @@ namespace Auth.API.Extensions
 
                 options.Events = new JwtBearerEvents
                 {
+                    OnAuthenticationFailed = context =>
+                    {
 
+
+                        return Task.CompletedTask;
+                    },
+                    OnChallenge = context =>
+                    {
+                        context.HandleResponse();
+                        throw new Auth.Models.Exceptions.AuthenticationException("Niste autorizirani ili token nije valjan.");
+                    },
                     OnMessageReceived = context =>
                     {
                         var token = context.Request.Headers["Authorization"].FirstOrDefault();
