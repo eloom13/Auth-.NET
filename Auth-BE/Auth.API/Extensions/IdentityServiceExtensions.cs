@@ -70,6 +70,7 @@ namespace Auth.API.Extensions
                     OnAuthenticationFailed = context =>
                     {
 
+
                         return Task.CompletedTask;
                     },
                     OnChallenge = context =>
