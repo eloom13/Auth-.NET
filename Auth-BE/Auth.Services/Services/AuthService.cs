@@ -3,6 +3,7 @@ using Auth.Models.Entities;
 using Auth.Models.Exceptions;
 using Auth.Services.Interfaces;
 using Auth.Services.Settings;
+using DotNetEnv;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -218,7 +219,9 @@ namespace Auth.Services.Services
             .Union(userClaims)
             .Union(roleClaims);
 
-            var symmetricSecurityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
+            var secret = Env.GetString("JWT_SECRET");
+            var symmetricSecurityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+
             var signingCredentials = new SigningCredentials(symmetricSecurityKey, SecurityAlgorithms.HmacSha256);
 
             var jwtSecurityToken = new JwtSecurityToken(
