@@ -1,6 +1,5 @@
 ﻿using Auth.API.Extensions;
 using Auth.API.Middleware;
-using Auth.API.Seed;
 using Auth.Services.Interfaces;
 using Auth.Services.Services;
 using DotNetEnv;
@@ -44,6 +43,9 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
 app.UseHttpsRedirection();
+
+app.UseRouting();
+
 app.UseCors("AllowSpecificOrigin");
 
 app.UseAuthentication();
@@ -51,11 +53,5 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// === Seed Roles ===
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    await SeedData.SeedRolesAsync(services);
-}
 
 app.Run();
