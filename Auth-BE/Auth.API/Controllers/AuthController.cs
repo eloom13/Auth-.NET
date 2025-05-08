@@ -34,7 +34,8 @@ namespace Auth.API.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<ApiResponse<AuthResponse>>> Login([FromBody] LoginRequest request)
         {
-            var result = await _authService.LoginAsync(request);
+            var ipAddress = _httpContextAccessor.HttpContext.Connection.RemoteIpAddress?.ToString();
+            var result = await _authService.LoginAsync(request, ipAddress);
 
             if (result.RequiresTwoFactor)
             {

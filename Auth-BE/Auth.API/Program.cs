@@ -62,5 +62,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+//await SeedData.SeedRolesAsync(app.Services.CreateScope().ServiceProvider);
 
 app.Run();

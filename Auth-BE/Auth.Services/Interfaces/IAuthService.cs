@@ -6,12 +6,12 @@ namespace Auth.Services.Interfaces
     {
         Task<CurrentUserResponse> GetCurrentUserAsync(string id);
         Task<AuthResponse> RegisterAsync(RegisterRequest request);
-        Task<AuthResponse> LoginAsync(LoginRequest request);
-        Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request);
+        Task<AuthResponse> LoginAsync(LoginRequest request, string? ipAddress = null);
+        Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request, string? ipAddress = null);
         Task<AuthResponse> ValidateTwoFactorAsync(TwoFactorRequest request);
         Task<bool> SetupTwoFactorAsync(string userId);
         Task<string> GenerateTwoFactorCodeAsync(string userId);
         Task<bool> VerifyTwoFactorCodeAsync(string userId, string code);
-        Task<bool> LogoutAsync(string userId);
+        Task<bool> LogoutAsync(string userId, string? refreshToken = null);
     }
 }

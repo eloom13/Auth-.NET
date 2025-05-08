@@ -1,10 +1,12 @@
-﻿using Auth.Models.DTOs;
+﻿using Auth.Models.Data;
+using Auth.Models.DTOs;
 using Auth.Models.Entities;
 using Auth.Models.Exceptions;
 using Auth.Services.Interfaces;
 using Auth.Services.Settings;
 using DotNetEnv;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -19,12 +21,14 @@ namespace Auth.Services.Services
         private readonly UserManager<User> _userManager;
         private readonly JWTSettings _jwtSettings;
         private readonly SignInManager<User> _signInManager;
+        private readonly ApplicationDbContext _context;
 
-        public AuthService(UserManager<User> userManager, IOptions<JWTSettings> jwtSettings, SignInManager<User> signInManager)
+        public AuthService(UserManager<User> userManager, IOptions<JWTSettings> jwtSettings, SignInManager<User> signInManager, ApplicationDbContext context)
         {
             _userManager = userManager;
             _jwtSettings = jwtSettings.Value;
             _signInManager = signInManager;
+            _context = context;
         }
 
         public async Task<CurrentUserResponse> GetCurrentUserAsync(string userId)
@@ -60,7 +64,7 @@ namespace Auth.Services.Services
                 LastName = request.LastName ?? string.Empty,
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true,
-                RefreshToken = null
+
             };
 
             var result = await _userManager.CreateAsync(user, request.Password);
@@ -76,7 +80,7 @@ namespace Auth.Services.Services
             return await GenerateTokensAsync(user);
         }
 
-        public async Task<AuthResponse> LoginAsync(LoginRequest request)
+        public async Task<AuthResponse> LoginAsync(LoginRequest request, string? ipAddress)
         {
             var user = await _userManager.FindByEmailAsync(request.Email);
             if (user == null)
@@ -101,21 +105,34 @@ namespace Auth.Services.Services
             return await GenerateTokensAsync(user);
         }
 
-        public async Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request)
+        public async Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request, string ipAddress = null)
         {
             var principal = GetPrincipalFromExpiredToken(request.Token);
             var username = principal.Identity.Name;
 
             var user = await _userManager.FindByNameAsync(username);
+            if (user == null)
+            {
+                throw new AuthenticationException("Nevažeći token.");
+            }
 
-            if (user == null ||
-                user.RefreshToken != request.RefreshToken ||
-                user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            // Pronađite refresh token u bazi
+            var refreshToken = await _context.RefreshTokens
+                .SingleOrDefaultAsync(rt => rt.Token == request.RefreshToken && rt.UserId == user.Id);
+
+            if (refreshToken == null || refreshToken.IsExpired || refreshToken.RevokedAt != null)
             {
                 throw new AuthenticationException("Nevažeći refresh token.");
             }
 
-            return await GenerateTokensAsync(user);
+            // Opcionalno: revoke trenutni refresh token i generirajte novi
+            refreshToken.RevokedAt = DateTime.UtcNow;
+            refreshToken.RevokedByIp = ipAddress;
+
+            _context.RefreshTokens.Update(refreshToken);
+            await _context.SaveChangesAsync();
+
+            return await GenerateTokensAsync(user, ipAddress);
         }
 
         public async Task<AuthResponse> ValidateTwoFactorAsync(TwoFactorRequest request)
@@ -178,7 +195,7 @@ namespace Auth.Services.Services
                 code);
         }
 
-        public async Task<bool> LogoutAsync(string userId)
+        public async Task<bool> LogoutAsync(string userId, string refreshToken = null)
         {
             var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
@@ -186,23 +203,57 @@ namespace Auth.Services.Services
                 throw new NotFoundException("Korisnik", userId);
             }
 
-            user.RefreshToken = null;
-            user.RefreshTokenExpiryTime = null;
-            await _userManager.UpdateAsync(user);
+            // Ako je proslijeđen refresh token, revokajte samo taj token
+            if (!string.IsNullOrEmpty(refreshToken))
+            {
+                var token = await _context.RefreshTokens
+                    .SingleOrDefaultAsync(rt => rt.Token == refreshToken && rt.UserId == userId);
+
+                if (token != null && token.RevokedAt == null)
+                {
+                    token.RevokedAt = DateTime.UtcNow;
+                    _context.RefreshTokens.Update(token);
+                    await _context.SaveChangesAsync();
+                }
+            }
+            // Inače revokajte sve korisnikove tokene
+            else
+            {
+                var tokens = await _context.RefreshTokens
+                    .Where(rt => rt.UserId == userId && rt.RevokedAt == null)
+                    .ToListAsync();
+
+                foreach (var token in tokens)
+                {
+                    token.RevokedAt = DateTime.UtcNow;
+                }
+
+                _context.RefreshTokens.UpdateRange(tokens);
+                await _context.SaveChangesAsync();
+            }
 
             return true;
         }
 
 
-        private async Task<AuthResponse> GenerateTokensAsync(User user)
+        private async Task<AuthResponse> GenerateTokensAsync(User user, string ipAddress = null)
         {
             var token = await GenerateJwtTokenAsync(user);
+            var refreshToken = GenerateRefreshToken(ipAddress);
 
-            var refreshToken = GenerateRefreshToken();
+            // Kreirajte novi RefreshToken entitet
+            var refreshTokenEntity = new RefreshToken
+            {
+                Token = refreshToken,
+                UserId = user.Id,
+                ExpiryTime = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationInDays),
+                CreatedAt = DateTime.UtcNow,
+                CreatedByIp = ipAddress
+            };
 
-            user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenExpirationInDays);
-            await _userManager.UpdateAsync(user);
+            // Dodajte u bazu
+            _context.RefreshTokens.Add(refreshTokenEntity);
+            await _context.SaveChangesAsync();
 
             return new AuthResponse
             {
@@ -251,7 +302,7 @@ namespace Auth.Services.Services
             return jwtSecurityToken;
         }
 
-        private static string GenerateRefreshToken()
+        private static string GenerateRefreshToken(string ipAddress)
         {
             var randomNumber = new byte[32];
             using var rng = RandomNumberGenerator.Create();
