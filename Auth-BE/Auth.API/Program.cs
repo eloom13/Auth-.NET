@@ -50,6 +50,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<ErrorHandlingMiddleware>();
+app.UseMiddleware<JwtAutoRefreshMiddleware>();
 
 app.UseHttpsRedirection();
 

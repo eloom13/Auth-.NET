@@ -38,8 +38,8 @@ namespace Auth.API.Extensions
                 opts.Secret = secret;
                 opts.Issuer = issuer;
                 opts.Audience = audience;
-                opts.ExpirationInMinutes = 60;
-                opts.RefreshTokenExpirationInDays = 30;
+                opts.ExpirationInMinutes = 1;
+                opts.RefreshTokenExpirationInDays = 7;
             });
 
             var key = Encoding.ASCII.GetBytes(secret);
