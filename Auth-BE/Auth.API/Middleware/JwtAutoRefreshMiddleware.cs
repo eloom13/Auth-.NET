@@ -1,4 +1,5 @@
-﻿using Auth.Models.DTOs;
+﻿using Auth.API.Helpers;
+using Auth.Models.DTOs;
 using Auth.Services.Interfaces;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -7,9 +8,6 @@ using System.Text;
 
 namespace Auth.API.Middleware
 {
-    /// <summary>
-    /// Middleware za automatsko osvježavanje JWT tokena kada istekne
-    /// </summary>
     public class JwtAutoRefreshMiddleware
     {
         private readonly RequestDelegate _next;
@@ -26,7 +24,6 @@ namespace Auth.API.Middleware
             var token = context.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
             var refreshToken = context.Request.Cookies["refresh_token"];
 
-            // Ako nema tokena ili refresh tokena, nastavite sa sljedećim middleware-om
             if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(refreshToken))
             {
                 await _next(context);
@@ -35,7 +32,6 @@ namespace Auth.API.Middleware
 
             var isTokenExpired = IsTokenExpired(token, jwtSettings.Value.Secret);
 
-            // Ako token nije istekao, nastavite sa sljedećim middleware-om
             if (!isTokenExpired)
             {
                 await _next(context);
@@ -44,7 +40,6 @@ namespace Auth.API.Middleware
 
             try
             {
-                // Token je istekao, ali imamo refresh token - pokušajmo osvježiti token
                 _logger.LogInformation("JWT token je istekao, pokušavamo ga osvježiti pomoću refresh tokena");
 
                 var request = new RefreshTokenRequest
@@ -55,19 +50,29 @@ namespace Auth.API.Middleware
 
                 var response = await authService.RefreshTokenAsync(request);
 
-                // Postavite novi refresh token u cookie
-                SetRefreshTokenCookie(context, response.RefreshToken);
-                response.RefreshToken = null;
+                CookieHelper.SetRefreshTokenCookie(context, response.RefreshToken);
 
-                // Postavite novi JWT token u header
-                context.Request.Headers["Authorization"] = $"Bearer {response.Token}";
+
+                // ✅ Optionally save new access token in HttpOnly cookie
+                /*
+                context.Response.Cookies.Append("access_token", response.Token, new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    Path = "/",
+                    Expires = DateTime.UtcNow.AddMinutes(15)
+                });
+                */
+
+                // Optional: also expose token in a response header (for frontend to pick up)
+                context.Response.Headers["X-New-Token"] = response.Token;
+
 
                 _logger.LogInformation("JWT token uspješno osvježen");
             }
             catch (Exception ex)
             {
-                // Ako osvježavanje ne uspije, logirajte grešku ali nastavite sa zahtjevom
-                // Autentifikacija će svakako biti odbijena ako token nije valjan
                 _logger.LogWarning(ex, "Greška prilikom automatskog osvježavanja JWT tokena");
             }
 
@@ -96,23 +101,8 @@ namespace Auth.API.Middleware
             }
             catch
             {
-                // Ako validacija izbaci iznimku, smatramo da je token istekao ili neispravan
                 return true;
             }
-        }
-
-        private void SetRefreshTokenCookie(HttpContext context, string refreshToken)
-        {
-            var cookieOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Expires = DateTime.UtcNow.AddDays(7),
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
-                Path = "/api/auth"
-            };
-
-            context.Response.Cookies.Append("refresh_token", refreshToken, cookieOptions);
         }
     }
 

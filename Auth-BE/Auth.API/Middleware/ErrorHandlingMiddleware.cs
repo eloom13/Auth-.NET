@@ -70,7 +70,6 @@ namespace Auth.API.Middleware
                     // 500 Internal Server Error - neočekivana greška
                     logger.LogError(exception, "NEUHVAĆENA IZNIMKA: {ExceptionMessage}", exception.Message);
 
-                    // Dodajte ovo za više detalja tijekom razvoja
                     if (context.RequestServices.GetService<IWebHostEnvironment>().IsDevelopment())
                     {
                         errorResponse = ApiResponse<object>.ErrorResponse(

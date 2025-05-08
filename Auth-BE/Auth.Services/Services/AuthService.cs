@@ -108,12 +108,22 @@ namespace Auth.Services.Services
         public async Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request, string ipAddress = null)
         {
             var principal = GetPrincipalFromExpiredToken(request.Token);
-            var username = principal.Identity.Name;
 
-            var user = await _userManager.FindByNameAsync(username);
+            // Promjena ovdje - tražimo userId preko sub (Subject) claima, a ne preko Name
+            var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                        principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                throw new AuthenticationException("Nevažeći token: nedostaje identifikacijski claim.");
+            }
+
+            // Traži korisnika prema ID-u, ne prema korisničkom imenu
+            var user = await _userManager.FindByIdAsync(userId);
+
             if (user == null)
             {
-                throw new AuthenticationException("Nevažeći token.");
+                throw new AuthenticationException("Korisnik nije pronađen.");
             }
 
             // Pronađite refresh token u bazi
@@ -318,9 +328,10 @@ namespace Auth.Services.Services
                 {
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret)),
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
-                    ValidateLifetime = false // Ignorišemo expire vrijeme ovdje
+                    ValidateIssuer = false,      // Ne validiramo izdavatelja za expired token
+                    ValidateAudience = false,    // Ne validiramo auditorij za expired token
+                    ValidateLifetime = false,    // Ignorišemo expire vrijeme ovdje
+                    ClockSkew = TimeSpan.Zero
                 };
 
                 var tokenHandler = new JwtSecurityTokenHandler();
@@ -332,12 +343,20 @@ namespace Auth.Services.Services
                     throw new AuthenticationException("Nevažeći token.");
                 }
 
+                // Provjerimo ima li principal barem sub claim
+                var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier) ?? principal.FindFirst(JwtRegisteredClaimNames.Sub);
+
+                if (userIdClaim == null)
+                {
+                    throw new AuthenticationException("Token ne sadrži ID korisnika.");
+                }
+
                 return principal;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Ako bilo šta pukne (invalid signature, invalid format, šta god)
-                throw new AuthenticationException("Nevažeći ili istekao token.");
+                throw new AuthenticationException($"Nevažeći ili istekao token: {ex.Message}");
             }
         }
 

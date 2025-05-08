@@ -1,6 +1,9 @@
-﻿using Auth.Models.Data;
+﻿using Auth.API.Helpers;
+using Auth.Models.Data;
+using Auth.Models.DTOs;
 using Auth.Models.Entities;
 using Auth.Models.Exceptions;
+using Auth.Services.Interfaces;
 using Auth.Services.Settings;
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -38,12 +41,11 @@ namespace Auth.API.Extensions
                 opts.Secret = secret;
                 opts.Issuer = issuer;
                 opts.Audience = audience;
-                opts.ExpirationInMinutes = 1;
+                opts.ExpirationInMinutes = 1; // TESTING
                 opts.RefreshTokenExpirationInDays = 7;
             });
 
             var key = Encoding.ASCII.GetBytes(secret);
-
 
             services.AddAuthentication(options =>
             {
@@ -68,12 +70,74 @@ namespace Auth.API.Extensions
 
                 options.Events = new JwtBearerEvents
                 {
-                    OnAuthenticationFailed = context =>
+                    OnAuthenticationFailed = async context =>
                     {
-                        return Task.CompletedTask;
+                        /// Check if JWT is expired
+                        if (context.Exception is SecurityTokenExpiredException)
+                        {
+                            var httpContext = context.HttpContext;
+                            var refreshToken = httpContext.Request.Cookies["refresh_token"];
+
+                            if (string.IsNullOrEmpty(refreshToken))
+                                return;
+
+                            try
+                            {
+                                var expiredToken = httpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+                                if (string.IsNullOrEmpty(expiredToken))
+                                    return;
+
+                                var authService = httpContext.RequestServices.GetRequiredService<IAuthService>();
+                                var logger = httpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
+
+                                logger.LogInformation("Pokušavam osvježiti istekli token");
+
+                                var refreshRequest = new RefreshTokenRequest
+                                {
+                                    Token = expiredToken,
+                                    RefreshToken = refreshToken
+                                };
+
+                                var ipAddress = httpContext.Connection.RemoteIpAddress?.ToString();
+                                var response = await authService.RefreshTokenAsync(refreshRequest, ipAddress);
+
+                                CookieHelper.SetRefreshTokenCookie(httpContext, response.RefreshToken);
+
+                                httpContext.Response.Headers.Add("X-New-Token", response.Token);
+
+                                httpContext.Items["TokenRefreshed"] = true;
+                                httpContext.Items["NewToken"] = response.Token;
+
+                                logger.LogInformation("Token uspješno osvježen");
+                            }
+                            catch (Exception ex)
+                            {
+                                var logger = httpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
+                                logger.LogWarning(ex, "Neuspješno osvježavanje tokena");
+                            }
+                        }
                     },
                     OnChallenge = context =>
                     {
+                        if (context.HttpContext.Items.ContainsKey("TokenRefreshed"))
+                        {
+                            context.HandleResponse();
+
+                            var response = new
+                            {
+                                success = true,
+                                message = "Token osvježen",
+                                token = context.HttpContext.Items["NewToken"] as string
+                            };
+
+                            context.HttpContext.Response.StatusCode = 200;
+                            context.HttpContext.Response.ContentType = "application/json";
+                            var jsonResponse = System.Text.Json.JsonSerializer.Serialize(response);
+                            context.HttpContext.Response.WriteAsync(jsonResponse);
+
+                            return Task.CompletedTask;
+                        }
+
                         context.HandleResponse();
                         throw new AuthenticationException("Niste autorizirani ili token nije valjan.");
                     },

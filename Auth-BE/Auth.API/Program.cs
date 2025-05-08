@@ -12,12 +12,8 @@ var builder = WebApplication.CreateBuilder(args);
 // === Add services ===
 builder.Services.AddPersistenceServices(builder.Configuration);
 
-// 🔥 OVO TI FALI
 builder.Services.AddIdentityServices(builder.Configuration);
-
-// Registruješ JWT Settings (ok je ovo)
 builder.Services.Configure<JWTSettings>(builder.Configuration.GetSection("JwtSettings"));
-
 builder.Services.AddInfrastructureServices();
 
 // AuthService ovisi o UserManageru ➔ ovo ide TEK nakon Identity-a
@@ -50,7 +46,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseMiddleware<ErrorHandlingMiddleware>();
-app.UseMiddleware<JwtAutoRefreshMiddleware>();
 
 app.UseHttpsRedirection();
 
