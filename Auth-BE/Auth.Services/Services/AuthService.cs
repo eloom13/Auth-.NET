@@ -44,7 +44,6 @@ namespace Auth.Services.Services
             };
         }
 
-
         public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
         {
             var existingUser = await _userManager.FindByEmailAsync(request.Email);

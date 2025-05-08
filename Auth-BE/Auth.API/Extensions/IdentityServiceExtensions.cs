@@ -1,5 +1,6 @@
 ﻿using Auth.Models.Data;
 using Auth.Models.Entities;
+using Auth.Models.Exceptions;
 using Auth.Services.Settings;
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -69,21 +70,18 @@ namespace Auth.API.Extensions
                 {
                     OnAuthenticationFailed = context =>
                     {
-
-
                         return Task.CompletedTask;
                     },
                     OnChallenge = context =>
                     {
                         context.HandleResponse();
-                        throw new Auth.Models.Exceptions.AuthenticationException("Niste autorizirani ili token nije valjan.");
+                        throw new AuthenticationException("Niste autorizirani ili token nije valjan.");
                     },
                     OnMessageReceived = context =>
                     {
                         var token = context.Request.Headers["Authorization"].FirstOrDefault();
                         if (!string.IsNullOrEmpty(token))
                         {
-                            // Ako NE počinje sa "Bearer ", pretpostavljamo da je čisti JWT
                             if (!token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                             {
                                 context.Token = token;
