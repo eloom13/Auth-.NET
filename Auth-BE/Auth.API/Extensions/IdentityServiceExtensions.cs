@@ -108,12 +108,12 @@ namespace Auth.API.Extensions
                                 httpContext.Items["TokenRefreshed"] = true;
                                 httpContext.Items["NewToken"] = response.Token;
 
-                                logger.LogInformation("Token uspješno osvježen");
+                                logger.LogInformation("Token refreshed");
                             }
                             catch (Exception ex)
                             {
                                 var logger = httpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
-                                logger.LogWarning(ex, "Neuspješno osvježavanje tokena");
+                                logger.LogWarning(ex, "Failed refreshing token");
                             }
                         }
                     },
@@ -126,7 +126,7 @@ namespace Auth.API.Extensions
                             var response = new
                             {
                                 success = true,
-                                message = "Token osvježen",
+                                message = "Token refreshed",
                                 token = context.HttpContext.Items["NewToken"] as string
                             };
 
@@ -139,7 +139,7 @@ namespace Auth.API.Extensions
                         }
 
                         context.HandleResponse();
-                        throw new AuthenticationException("Niste autorizirani ili token nije valjan.");
+                        throw new AuthenticationException("You are not authorized, or token is expired.");
                     },
                     OnMessageReceived = context =>
                     {

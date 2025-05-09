@@ -30,7 +30,7 @@ namespace Auth.Models.Entities
         public DateTime? RevokedAt { get; set; }
 
 
-        // Dodatno
+        // Additional properties for tracking
         public string? CreatedByIp { get; set; }
         public string? RevokedByIp { get; set; }
         public string? DeviceInfo { get; set; }

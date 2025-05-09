@@ -2,19 +2,20 @@
 using Auth.Models.Response;
 using System.Net;
 using System.Text.Json;
+
 namespace Auth.API.Middleware
 {
-    /// Middleware koji hvata sve neuhvaćene iznimke u aplikaciji i pretvara ih u strukturirane API odgovore
-    /// Osigurava da klijent uvijek dobije konzistentan format odgovora čak i kada dođe do pogreške
     public class ErrorHandlingMiddleware
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<ErrorHandlingMiddleware> _logger;
+        private readonly IWebHostEnvironment _environment;
 
-        public ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorHandlingMiddleware> logger)
+        public ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorHandlingMiddleware> logger, IWebHostEnvironment environment)
         {
             _next = next;
             _logger = logger;
+            _environment = environment;
         }
 
         public async Task Invoke(HttpContext context)
@@ -25,72 +26,59 @@ namespace Auth.API.Middleware
             }
             catch (Exception ex)
             {
-                await HandleExceptionAsync(context, ex, _logger);
+                await HandleExceptionAsync(context, ex);
             }
         }
 
-        private static async Task HandleExceptionAsync(HttpContext context, Exception exception, ILogger logger)
+        private async Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
             HttpStatusCode code = HttpStatusCode.InternalServerError;
-            var errorResponse = new ApiResponse<object>();
+            ApiResponse<object> errorResponse;
 
-            switch (exception)
+            if (exception is AppExceptions appException)
             {
-                case NotFoundException notFoundEx:
-                    // 404 Not Found - resurs nije pronađen
-                    code = HttpStatusCode.NotFound;
-                    errorResponse = ApiResponse<object>.ErrorResponse(notFoundEx.Message, null, (int)code);
-                    break;
+                _logger.LogError(appException, "Application exception: {Message}", appException.Message);
 
-                case ValidationException validationEx:
-                    // 400 Bad Request - nevažeći podaci
-                    code = HttpStatusCode.BadRequest;
-                    errorResponse = ApiResponse<object>.ErrorResponse(validationEx.Message, null, (int)code);
-                    break;
+                code = exception switch
+                {
+                    NotFoundException _ => HttpStatusCode.NotFound,
+                    ValidationException _ => HttpStatusCode.BadRequest,
+                    ForbiddenAccessException _ => HttpStatusCode.Forbidden,
+                    AuthenticationException _ => HttpStatusCode.Unauthorized,
+                    ConflictException _ => HttpStatusCode.Conflict,
+                    _ => HttpStatusCode.InternalServerError
+                };
 
-                case ForbiddenAccessException forbiddenEx:
-                    // 403 Forbidden - pristup zabranjen
-                    code = HttpStatusCode.Forbidden;
-                    errorResponse = ApiResponse<object>.ErrorResponse(forbiddenEx.Message, null, (int)code);
-                    break;
+                errorResponse = ApiResponse<object>.ErrorResponse(appException.Message, null, (int)code);
+            }
+            else
+            {
+                _logger.LogError(exception, "UNHANDLED EXCEPTION: {Message}", exception.Message);
 
-                case AuthenticationException authEx:
-                    // 401 Unauthorized - pogreška autentifikacije
-                    code = HttpStatusCode.Unauthorized;
-                    errorResponse = ApiResponse<object>.ErrorResponse(authEx.Message, null, (int)code);
-                    break;
-
-                case ConflictException conflictEx:
-                    // 409 Conflict - konflikt pri obradi zahtjeva
-                    code = HttpStatusCode.Conflict;
-                    errorResponse = ApiResponse<object>.ErrorResponse(conflictEx.Message, null, (int)code);
-                    break;
-
-                default:
-                    // 500 Internal Server Error - neočekivana greška
-                    logger.LogError(exception, "NEUHVAĆENA IZNIMKA: {ExceptionMessage}", exception.Message);
-
-                    if (context.RequestServices.GetService<IWebHostEnvironment>().IsDevelopment())
-                    {
-                        errorResponse = ApiResponse<object>.ErrorResponse(
-                            $"Došlo je do neočekivane greške: {exception.Message} | {exception.StackTrace}",
-                            null,
-                            (int)code);
-                    }
-                    else
-                    {
-                        errorResponse = ApiResponse<object>.ErrorResponse(
-                            "Došlo je do neočekivane greške. Pokušajte ponovo ili kontaktirajte administratora.",
-                            null,
-                            (int)code);
-                    }
-                    break;
+                if (_environment.IsDevelopment())
+                {
+                    errorResponse = ApiResponse<object>.ErrorResponse(
+                        $"An unexpected error occurred: {exception.Message}",
+                        new List<string> { exception.StackTrace },
+                        (int)code);
+                }
+                else
+                {
+                    errorResponse = ApiResponse<object>.ErrorResponse(
+                        "An unexpected error occurred. Please try again or contact the administrator.",
+                        null,
+                        (int)code);
+                }
             }
 
             context.Response.ContentType = "application/json";
             context.Response.StatusCode = (int)code;
 
-            var result = JsonSerializer.Serialize(errorResponse);
+            var result = JsonSerializer.Serialize(errorResponse, new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
+
             await context.Response.WriteAsync(result);
         }
     }

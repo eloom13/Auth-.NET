@@ -4,14 +4,9 @@ namespace Auth.Services.Interfaces
 {
     public interface IAuthService
     {
-        Task<CurrentUserResponse> GetCurrentUserAsync(string id);
         Task<AuthResponse> RegisterAsync(RegisterRequest request);
-        Task<AuthResponse> LoginAsync(LoginRequest request, string? ipAddress = null);
-        Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request, string? ipAddress = null);
-        Task<AuthResponse> ValidateTwoFactorAsync(TwoFactorRequest request);
-        Task<bool> SetupTwoFactorAsync(string userId);
-        Task<string> GenerateTwoFactorCodeAsync(string userId);
-        Task<bool> VerifyTwoFactorCodeAsync(string userId, string code);
-        Task<bool> LogoutAsync(string userId, string? refreshToken = null);
+        Task<AuthResponse> LoginAsync(LoginRequest request, string ipAddress = null);
+        Task<AuthResponse> RefreshTokenAsync(RefreshTokenRequest request, string ipAddress = null);
+        Task<bool> LogoutAsync(string userId, string refreshToken = null);
     }
 }

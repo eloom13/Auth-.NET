@@ -1,14 +1,11 @@
 ﻿namespace Auth.Models.Response
 {
-    /// Generička klasa za standardizirane odgovore API-ja
-    /// Osigurava konzistentnu strukturu odgovora kroz cijeli API
     public class ApiResponse<T>
     {
         public bool Success { get; set; }
         public string Message { get; set; }
         public T Data { get; set; }
         public List<string> Errors { get; set; }
-
         public int StatusCode { get; set; }
 
         public ApiResponse()
@@ -17,6 +14,7 @@
             Message = string.Empty;
             Errors = new List<string>();
         }
+
         public static ApiResponse<T> SuccessResponse(T data, string message = "")
         {
             return new ApiResponse<T>

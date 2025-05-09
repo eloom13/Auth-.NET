@@ -16,7 +16,9 @@ builder.Services.AddIdentityServices(builder.Configuration);
 builder.Services.Configure<JWTSettings>(builder.Configuration.GetSection("JwtSettings"));
 builder.Services.AddInfrastructureServices();
 
-// AuthService ovisi o UserManageru ➔ ovo ide TEK nakon Identity-a
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<ITwoFactorService, TwoFactorService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.Services.AddHttpContextAccessor();
