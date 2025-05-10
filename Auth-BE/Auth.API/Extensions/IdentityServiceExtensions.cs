@@ -41,7 +41,7 @@ namespace Auth.API.Extensions
                 opts.Secret = secret;
                 opts.Issuer = issuer;
                 opts.Audience = audience;
-                opts.ExpirationInMinutes = 1; // TESTING
+                opts.ExpirationInMinutes = 15; // TESTING
                 opts.RefreshTokenExpirationInDays = 7;
             });
 

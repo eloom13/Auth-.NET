@@ -2,6 +2,7 @@
 using Auth.Models.Entities;
 using Auth.Models.Exceptions;
 using Auth.Services.Interfaces;
+using MapsterMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 
@@ -12,12 +13,14 @@ namespace Auth.Services.Services
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _signInManager;
         private readonly ILogger<UserService> _logger;
+        private readonly IMapper _mapper;
 
-        public UserService(UserManager<User> userManager, SignInManager<User> signInManager, ILogger<UserService> logger)
+        public UserService(UserManager<User> userManager, SignInManager<User> signInManager, ILogger<UserService> logger, IMapper mapper)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _logger = logger;
+            _mapper = mapper;
         }
 
         public async Task<User> CreateUserAsync(RegisterRequest request)
@@ -29,16 +32,11 @@ namespace Auth.Services.Services
                 throw new ConflictException($"User with this {request.Email} email already exists");
             }
 
-            var user = new User
-            {
-                Email = request.Email,
-                UserName = request.Email,
-                FirstName = request.FirstName ?? string.Empty,
-                LastName = request.LastName ?? string.Empty,
-                CreatedAt = DateTime.UtcNow,
-                IsActive = true,
-                TwoFactorEnabled = false
-            };
+            var user = _mapper.Map<User>(request);
+            user.UserName = request.Email;
+            user.CreatedAt = DateTime.UtcNow;
+            user.IsActive = true;
+            user.TwoFactorEnabled = false;
 
             var result = await _userManager.CreateAsync(user, request.Password);
 
@@ -59,24 +57,21 @@ namespace Auth.Services.Services
         public async Task<CurrentUserResponse> GetCurrentUserAsync(string userId)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            var roles = await _userManager.GetRolesAsync(user);
-
             if (user == null)
             {
                 _logger.LogWarning("User with ID {UserId} not found", userId);
-                return null;
+                throw new NotFoundException("User", userId);
             }
 
-            return new CurrentUserResponse
-            {
-                Id = user.Id,
-                Email = user.Email,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Roles = roles.ToList(),
-                IsTwoFactorEnabled = user.TwoFactorEnabled
-            };
+            var roles = await _userManager.GetRolesAsync(user);
+
+            var currentUserResponse = _mapper.Map<CurrentUserResponse>(user);
+            currentUserResponse.Roles = roles.ToList();
+            currentUserResponse.IsTwoFactorEnabled = user.TwoFactorEnabled;
+
+            return currentUserResponse;
         }
+
 
         public async Task<(bool Succeeded, User User, bool RequiresTwoFactor)> VerifyCredentialsAsync(string email, string password)
         {

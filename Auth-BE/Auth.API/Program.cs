@@ -4,6 +4,7 @@ using Auth.Services.Interfaces;
 using Auth.Services.Services;
 using Auth.Services.Settings;
 using DotNetEnv;
+using Mapster;
 
 Env.Load();
 
@@ -20,6 +21,8 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ITwoFactorService, TwoFactorService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+
+builder.Services.AddMapster();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllers();
