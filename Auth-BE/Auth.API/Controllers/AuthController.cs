@@ -16,6 +16,7 @@ namespace Auth.API.Controllers
         private readonly IUserService _userService;
         private readonly ITwoFactorService _twoFactorService;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ILogger<AuthController> _logger;
 
         public AuthController(
             IAuthService authService,
@@ -28,6 +29,7 @@ namespace Auth.API.Controllers
             _userService = userService;
             _twoFactorService = twoFactorService;
             _httpContextAccessor = httpContextAccessor;
+            _logger = logger;
         }
 
         [HttpPost("register")]
@@ -45,19 +47,29 @@ namespace Auth.API.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<ApiResponse<AuthResponse>>> Login([FromBody] LoginRequest request)
         {
-            var ipAddress = _httpContextAccessor.HttpContext.Connection.RemoteIpAddress?.ToString();
-            var result = await _authService.LoginAsync(request, ipAddress);
-
-            if (result.RequiresTwoFactor)
+            try
             {
-                return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "2FA verification required"));
+                var ipAddress = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
+                _logger.LogInformation("Login request from IP: {IpAddress}", ipAddress ?? "Unknown");
+
+                var result = await _authService.LoginAsync(request, ipAddress);
+
+                if (result.RequiresTwoFactor)
+                {
+                    return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "2FA verification required"));
+                }
+
+                CookieHelper.SetRefreshTokenCookie(HttpContext, result.RefreshToken);
+
+                result.RefreshToken = null;
+
+                return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "Login successful"));
             }
-
-            CookieHelper.SetRefreshTokenCookie(HttpContext, result.RefreshToken);
-
-            result.RefreshToken = null;
-
-            return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "Login successful"));
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during login for {Email}", request.Email);
+                throw;
+            }
         }
 
         [Authorize]
