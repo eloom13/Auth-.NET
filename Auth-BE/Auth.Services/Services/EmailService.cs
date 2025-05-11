@@ -1,4 +1,6 @@
-﻿using Auth.Services.Interfaces;
+﻿// Auth.Services/Services/EmailService.cs
+using Auth.Models.DTOs;
+using Auth.Services.Interfaces;
 using Auth.Services.Settings;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -11,13 +13,21 @@ namespace Auth.Services.Services
     {
         private readonly SMTPSettings _smtpSettings;
         private readonly ILogger<EmailService> _logger;
+        private readonly IMessageBrokerService _messageBroker;
+        private const string EmailQueue = "email_queue";
+        private const string ConfirmationEmailQueue = "confirmation_email_queue";
 
-        public EmailService(IOptions<SMTPSettings> smtpSettings, ILogger<EmailService> logger)
+        public EmailService(
+            IOptions<SMTPSettings> smtpSettings,
+            ILogger<EmailService> logger,
+            IMessageBrokerService messageBroker)
         {
             _smtpSettings = smtpSettings.Value;
             _logger = logger;
+            _messageBroker = messageBroker;
         }
 
+        // Existing synchronous methods
         public async Task SendEmailAsync(string to, string subject, string htmlBody)
         {
             try
@@ -78,6 +88,48 @@ namespace Auth.Services.Services
                 </html>";
 
             await SendEmailAsync(email, subject, body);
+        }
+
+        // New asynchronous queue-based methods
+        public void QueueEmailAsync(string to, string subject, string htmlBody)
+        {
+            var message = new EmailMessage
+            {
+                To = to,
+                Subject = subject,
+                HtmlBody = htmlBody
+            };
+
+            _messageBroker.PublishEmailMessage(EmailQueue, message);
+            _logger.LogInformation("Email queued for {Email}", to);
+        }
+
+        public void QueueEmailConfirmationAsync(string email, string confirmationLink)
+        {
+            var message = new EmailConfirmationMessage
+            {
+                Email = email,
+                ConfirmationLink = confirmationLink
+            };
+
+            _messageBroker.PublishEmailMessage(ConfirmationEmailQueue, message);
+            _logger.LogInformation("Confirmation email queued for {Email}", email);
+        }
+
+        public void QueuePasswordResetLinkAsync(string email, string resetLink)
+        {
+            string subject = "Password Reset";
+            string body = $@"
+                <html>
+                <body>
+                    <h2>Password Reset Request</h2>
+                    <p>You've requested to reset your password. Please click the link below to reset it:</p>
+                    <p><a href='{resetLink}'>Reset Password</a></p>
+                    <p>If you didn't request this password reset, please ignore this email and your password will remain unchanged.</p>
+                </body>
+                </html>";
+
+            QueueEmailAsync(email, subject, body);
         }
     }
 }

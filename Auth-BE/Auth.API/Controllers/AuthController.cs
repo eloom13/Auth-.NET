@@ -51,7 +51,8 @@ namespace Auth.API.Controllers
 
                 var callbackUrl = $"{Request.Scheme}://{Request.Host}/api/auth/confirm-email?userId{result.User.Id}&token={encodedToken}";
 
-                await _emailService.SendEmailConfirmationAsync(result.User.Email, callbackUrl);
+                // Use queue-based email method instead of direct sending
+                _emailService.QueueEmailConfirmationAsync(result.User.Email, callbackUrl);
 
                 var loginResult = await _authService.LoginAsync(new LoginRequest
                 {

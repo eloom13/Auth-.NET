@@ -37,6 +37,15 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
 });
 
+var rabbitMqHost = Env.GetString("RABBITMQ_HOST") ?? "localhost";
+
+// Register RabbitMQ service
+builder.Services.AddSingleton<IMessageBrokerService>(sp =>
+    new RabbitMQService(rabbitMqHost, sp.GetRequiredService<ILogger<RabbitMQService>>()));
+
+// Register email consumer as a background service
+builder.Services.AddHostedService<EmailConsumerService>();
+
 var app = builder.Build();
 
 // === Middlewares ===
