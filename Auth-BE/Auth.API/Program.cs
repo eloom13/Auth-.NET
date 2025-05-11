@@ -1,5 +1,6 @@
 ﻿using Auth.API.Extensions;
 using Auth.API.Middleware;
+using Auth.API.Seed;
 using Auth.Services.Interfaces;
 using Auth.Services.Services;
 using Auth.Services.Settings;
@@ -63,6 +64,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-//await SeedData.SeedRolesAsync(app.Services.CreateScope().ServiceProvider);
+await SeedData.SeedRolesAsync(app.Services.CreateScope().ServiceProvider);
 
 app.Run();
