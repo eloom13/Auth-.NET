@@ -1,4 +1,4 @@
-﻿namespace Auth.Models.DTOs
+﻿namespace Auth.Models.Response
 {
     public class CurrentUserResponse
     {
@@ -10,5 +10,6 @@
         public DateTime CreatedAt { get; set; }
         public List<string> Roles { get; set; } = new List<string>();
         public bool IsTwoFactorEnabled { get; set; }
+        public bool EmailConfirmed { get; set; }
     }
 }

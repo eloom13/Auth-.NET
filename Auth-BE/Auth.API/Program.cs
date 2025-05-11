@@ -2,7 +2,6 @@
 using Auth.API.Middleware;
 using Auth.Services.Interfaces;
 using Auth.Services.Services;
-using Auth.Services.Settings;
 using DotNetEnv;
 using Mapster;
 
@@ -12,10 +11,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // === Add services ===
 builder.Services.AddPersistenceServices(builder.Configuration);
-
 builder.Services.AddIdentityServices(builder.Configuration);
-builder.Services.Configure<JWTSettings>(builder.Configuration.GetSection("JwtSettings"));
-builder.Services.AddInfrastructureServices();
+builder.Services.AddInfrastructureServices(builder.Configuration);
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITokenService, TokenService>();

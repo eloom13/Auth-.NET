@@ -1,5 +1,7 @@
-﻿using Auth.Models.DTOs;
+﻿using Auth.Models.Entities;
 using Auth.Models.Exceptions;
+using Auth.Models.Request;
+using Auth.Models.Response;
 using Auth.Services.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -21,32 +23,29 @@ namespace Auth.Services.Services
             _logger = logger;
         }
 
-        public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
+        public async Task<(User User, RegisterResponse Response)> RegisterAsync(RegisterRequest request)
         {
             _logger.LogInformation("Starting registration for email {Email}", request.Email);
 
             var user = await _userService.CreateUserAsync(request);
 
-            var jwtToken = await _tokenService.GenerateJwtTokenAsync(user);
-            var refreshToken = await _tokenService.GenerateRefreshTokenAsync(user);
-
-            var response = new AuthResponse
+            // We don't generate a token immediately for a new user since email confirmation is required
+            var response = new RegisterResponse
             {
-                Token = jwtToken,
-                RefreshToken = refreshToken,
-                Expiration = DateTime.UtcNow.AddMinutes(15),
-                RequiresTwoFactor = false
+                UserId = user.Id,
+                Email = user.Email,
+                RequiresEmailConfirmation = true
             };
 
             _logger.LogInformation("Registration successful for user {Email}", user.Email);
-            return response;
+            return (user, response);
         }
 
         public async Task<AuthResponse> LoginAsync(LoginRequest request, string ipAddress = null)
         {
             _logger.LogInformation("Starting login for email {Email}", request.Email);
 
-            var (succeeded, user, requiresTwoFactor) = await _userService.VerifyCredentialsAsync(request.Email, request.Password);
+            var (succeeded, user, requiresTwoFactor, emailNotConfirmed) = await _userService.VerifyCredentialsAsync(request.Email, request.Password);
 
             if (!succeeded)
             {
@@ -54,15 +53,18 @@ namespace Auth.Services.Services
                 throw new AuthenticationException("Invalid email or password.");
             }
 
+            // If requires two-factor, don't generate tokens yet
             if (requiresTwoFactor)
             {
                 _logger.LogInformation("Login requires 2FA for user {Email}", request.Email);
                 return new AuthResponse
                 {
-                    RequiresTwoFactor = true
+                    RequiresTwoFactor = true,
+                    EmailNotConfirmed = emailNotConfirmed
                 };
             }
 
+            // Generate tokens regardless of email confirmation status
             var jwtToken = await _tokenService.GenerateJwtTokenAsync(user);
             var refreshToken = await _tokenService.GenerateRefreshTokenAsync(user, ipAddress);
 
@@ -71,10 +73,19 @@ namespace Auth.Services.Services
                 Token = jwtToken,
                 RefreshToken = refreshToken,
                 Expiration = DateTime.UtcNow.AddMinutes(15), // This should come from the actual JWT token expiration time
-                RequiresTwoFactor = false
+                RequiresTwoFactor = false,
+                EmailNotConfirmed = emailNotConfirmed // Include email confirmation status in response
             };
 
-            _logger.LogInformation("Login successful for user {Email}", user.Email);
+            if (emailNotConfirmed)
+            {
+                _logger.LogInformation("Login successful for user {Email} with unconfirmed email", user.Email);
+            }
+            else
+            {
+                _logger.LogInformation("Login successful for user {Email}", user.Email);
+            }
+
             return response;
         }
 
@@ -97,7 +108,8 @@ namespace Auth.Services.Services
                     Token = jwtToken,
                     RefreshToken = newRefreshToken,
                     Expiration = DateTime.UtcNow.AddMinutes(15), // This should come from the actual JWT token expiration time
-                    RequiresTwoFactor = false
+                    RequiresTwoFactor = false,
+                    EmailNotConfirmed = false
                 };
 
                 _logger.LogInformation("Token successfully refreshed for user {Email}", user.Email);

@@ -1,6 +1,7 @@
-﻿using Auth.Models.DTOs;
-using Auth.Models.Entities;
+﻿using Auth.Models.Entities;
 using Auth.Models.Exceptions;
+using Auth.Models.Request;
+using Auth.Models.Response;
 using Auth.Services.Interfaces;
 using MapsterMapper;
 using Microsoft.AspNetCore.Identity;
@@ -37,6 +38,7 @@ namespace Auth.Services.Services
             user.CreatedAt = DateTime.UtcNow;
             user.IsActive = true;
             user.TwoFactorEnabled = false;
+            user.EmailConfirmed = false;  // Set email as not confirmed initially
 
             var result = await _userManager.CreateAsync(user, request.Password);
 
@@ -68,36 +70,90 @@ namespace Auth.Services.Services
             var currentUserResponse = _mapper.Map<CurrentUserResponse>(user);
             currentUserResponse.Roles = roles.ToList();
             currentUserResponse.IsTwoFactorEnabled = user.TwoFactorEnabled;
+            currentUserResponse.EmailConfirmed = user.EmailConfirmed;
 
             return currentUserResponse;
         }
 
-
-        public async Task<(bool Succeeded, User User, bool RequiresTwoFactor)> VerifyCredentialsAsync(string email, string password)
+        public async Task<(bool Succeeded, User User, bool RequiresTwoFactor, bool EmailNotConfirmed)> VerifyCredentialsAsync(string email, string password)
         {
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null)
             {
                 _logger.LogWarning("Login attempt with non-existent email: {Email}", email);
-                return (false, null, false);
+                return (false, null, false, false);
             }
 
             var result = await _signInManager.CheckPasswordSignInAsync(user, password, false);
             if (!result.Succeeded)
             {
                 _logger.LogWarning("Failed login for user {Email} - invalid password", email);
-                return (false, null, false);
+                return (false, null, false, false);
+            }
+
+            // Check if email is confirmed, but don't block login
+            bool emailNotConfirmed = !user.EmailConfirmed;
+            if (emailNotConfirmed)
+            {
+                _logger.LogInformation("Login for user {Email} with unconfirmed email", email);
             }
 
             if (user.TwoFactorEnabled)
             {
                 _logger.LogInformation("Login requires 2FA for user {Email}", email);
-                return (true, user, true);
+                return (true, user, true, emailNotConfirmed);
             }
 
             _logger.LogInformation("Successful login for user {Email}", email);
-            return (true, user, false);
+            return (true, user, false, emailNotConfirmed);
+        }
 
+        public async Task<string> GenerateEmailConfirmationTokenAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                _logger.LogWarning("User with ID {UserId} not found when generating email confirmation token", userId);
+                throw new NotFoundException("User", userId);
+            }
+
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            _logger.LogInformation("Email confirmation token generated for user {Email}", user.Email);
+
+            return token;
+        }
+
+        public async Task<bool> ConfirmEmailAsync(string userId, string token)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                _logger.LogWarning("User with ID {UserId} not found when confirming email", userId);
+                throw new NotFoundException("User", userId);
+            }
+
+            var result = await _userManager.ConfirmEmailAsync(user, token);
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                _logger.LogWarning("Failed to confirm email for user {Email}: {Errors}", user.Email, errors);
+                return false;
+            }
+
+            _logger.LogInformation("Email confirmed for user {Email}", user.Email);
+            return true;
+        }
+
+        public async Task<User> GetUserByEmailAsync(string email)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                _logger.LogWarning("User with email {Email} not found", email);
+                // We're not throwing an exception here to handle this case in the controller
+            }
+
+            return user;
         }
     }
 }

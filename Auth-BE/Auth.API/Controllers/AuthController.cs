@@ -1,10 +1,14 @@
 ﻿using Auth.API.Helpers;
-using Auth.Models.DTOs;
 using Auth.Models.Response;
 using Auth.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.WebUtilities;
 using System.Security.Claims;
+using System.Text;
+using LoginRequest = Auth.Models.Request.LoginRequest;
+using RegisterRequest = Auth.Models.Request.RegisterRequest;
+using ResendConfirmationEmailRequest = Auth.Models.Request.ResendConfirmationEmailRequest;
 
 namespace Auth.API.Controllers
 {
@@ -15,6 +19,7 @@ namespace Auth.API.Controllers
         private readonly IAuthService _authService;
         private readonly IUserService _userService;
         private readonly ITwoFactorService _twoFactorService;
+        private readonly IEmailService _emailService;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ILogger<AuthController> _logger;
 
@@ -22,26 +27,87 @@ namespace Auth.API.Controllers
             IAuthService authService,
             IUserService userService,
             ITwoFactorService twoFactorService,
+            IEmailService emailService,
             IHttpContextAccessor httpContextAccessor,
             ILogger<AuthController> logger)
         {
             _authService = authService;
             _userService = userService;
             _twoFactorService = twoFactorService;
+            _emailService = emailService;
             _httpContextAccessor = httpContextAccessor;
             _logger = logger;
         }
 
         [HttpPost("register")]
-        public async Task<ActionResult<ApiResponse<AuthResponse>>> Register([FromBody] RegisterRequest request)
+        public async Task<ActionResult<ApiResponse<RegisterResponse>>> Register([FromBody] RegisterRequest request)
         {
             var result = await _authService.RegisterAsync(request);
 
-            CookieHelper.SetRefreshTokenCookie(HttpContext, result.RefreshToken);
+            if (result.User != null)
+            {
+                var confirmationToken = await _userService.GenerateEmailConfirmationTokenAsync(result.User.Id);
+                var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(confirmationToken));
 
-            result.RefreshToken = null;
+                var callbackUrl = $"{Request.Scheme}://{Request.Host}/api/auth/confirm-email?userId={result.User.Id}&token={encodedToken}";
 
-            return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "Registration successful"));
+                await _emailService.SendEmailConfirmationAsync(result.User.Email, callbackUrl);
+            }
+
+            return Ok(ApiResponse<RegisterResponse>.SuccessResponse(
+                new RegisterResponse
+                {
+                    UserId = result.User.Id,
+                    Email = result.User.Email,
+                    RequiresEmailConfirmation = true
+                },
+                "Registration successful. Please check your email to confirm your account."));
+        }
+
+        [HttpGet("confirm-email")]
+        public async Task<IActionResult> ConfirmEmail(string userId, string token)
+        {
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(token))
+            {
+                return BadRequest(ApiResponse<bool>.ErrorResponse("Invalid email confirmation link.", null, 400));
+            }
+
+            var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(token));
+            var result = await _userService.ConfirmEmailAsync(userId, decodedToken);
+
+            if (result)
+            {
+                // You could redirect to a frontend page or return a view
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Email confirmed successfully. You can now log in to your account."));
+            }
+
+            return BadRequest(ApiResponse<bool>.ErrorResponse("Failed to confirm email.", null, 400));
+        }
+
+        [HttpPost("resend-confirmation-email")]
+        public async Task<IActionResult> ResendConfirmationEmail([FromBody] ResendConfirmationEmailRequest request)
+        {
+            var user = await _userService.GetUserByEmailAsync(request.Email);
+
+            if (user == null)
+            {
+                // We don't want to reveal that the email doesn't exist for security reasons
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "If your email exists in our system, a confirmation email has been sent."));
+            }
+
+            if (user.EmailConfirmed)
+            {
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Your email is already confirmed."));
+            }
+
+            var confirmationToken = await _userService.GenerateEmailConfirmationTokenAsync(user.Id);
+            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(confirmationToken));
+
+            var callbackUrl = $"{Request.Scheme}://{Request.Host}/api/auth/confirm-email?userId={user.Id}&token={encodedToken}";
+
+            await _emailService.SendEmailConfirmationAsync(user.Email, callbackUrl);
+
+            return Ok(ApiResponse<bool>.SuccessResponse(true, "Confirmation email has been sent. Please check your inbox."));
         }
 
         [HttpPost("login")]
@@ -54,13 +120,26 @@ namespace Auth.API.Controllers
 
                 var result = await _authService.LoginAsync(request, ipAddress);
 
+                // Allow login even if email is not confirmed, but include the information in the response
+                if (result.EmailNotConfirmed)
+                {
+                    // Set refresh token cookie
+                    CookieHelper.SetRefreshTokenCookie(HttpContext, result.RefreshToken);
+                    result.RefreshToken = null;
+
+                    // Return successful login but with a message about unconfirmed email
+                    return Ok(ApiResponse<AuthResponse>.SuccessResponse(
+                        result,
+                        "Login successful. Note: Your email is not yet confirmed. Some features may be limited until you confirm your email."
+                    ));
+                }
+
                 if (result.RequiresTwoFactor)
                 {
                     return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "2FA verification required"));
                 }
 
                 CookieHelper.SetRefreshTokenCookie(HttpContext, result.RefreshToken);
-
                 result.RefreshToken = null;
 
                 return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "Login successful"));

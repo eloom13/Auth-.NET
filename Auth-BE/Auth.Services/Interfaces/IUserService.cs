@@ -1,5 +1,6 @@
-﻿using Auth.Models.DTOs;
-using Auth.Models.Entities;
+﻿using Auth.Models.Entities;
+using Auth.Models.Request;
+using Auth.Models.Response;
 
 namespace Auth.Services.Interfaces
 {
@@ -7,6 +8,9 @@ namespace Auth.Services.Interfaces
     {
         Task<CurrentUserResponse> GetCurrentUserAsync(string userId);
         Task<User> CreateUserAsync(RegisterRequest request);
-        Task<(bool Succeeded, User User, bool RequiresTwoFactor)> VerifyCredentialsAsync(string email, string password);
+        Task<(bool Succeeded, User User, bool RequiresTwoFactor, bool EmailNotConfirmed)> VerifyCredentialsAsync(string email, string password);
+        Task<string> GenerateEmailConfirmationTokenAsync(string userId);
+        Task<bool> ConfirmEmailAsync(string userId, string token);
+        Task<User> GetUserByEmailAsync(string email);
     }
 }
