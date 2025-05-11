@@ -13,11 +13,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddPersistenceServices(builder.Configuration);
 builder.Services.AddIdentityServices(builder.Configuration);
 builder.Services.AddInfrastructureServices(builder.Configuration);
+builder.Services.AddRabbitMQServices(builder.Configuration);
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ITwoFactorService, TwoFactorService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddSingleton<IEmailService, EmailService>();
 
 builder.Services.AddMapster();
 
@@ -36,15 +38,6 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.Cookie.Name = "AuthProject.Cookies";
     options.SlidingExpiration = true;
 });
-
-var rabbitMqHost = Env.GetString("RABBITMQ_HOST") ?? "localhost";
-
-// Register RabbitMQ service
-builder.Services.AddSingleton<IMessageBrokerService>(sp =>
-    new RabbitMQService(rabbitMqHost, sp.GetRequiredService<ILogger<RabbitMQService>>()));
-
-// Register email consumer as a background service
-builder.Services.AddHostedService<EmailConsumerService>();
 
 var app = builder.Build();
 
