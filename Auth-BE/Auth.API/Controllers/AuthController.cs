@@ -49,7 +49,7 @@ namespace Auth.API.Controllers
                 var confirmationToken = await _userService.GenerateEmailConfirmationTokenAsync(result.User.Id);
                 var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(confirmationToken));
 
-                var callbackUrl = $"{Request.Scheme}://{Request.Host}/api/auth/confirm-email?userId{result.User.Id}&token={encodedToken}";
+                var callbackUrl = $"{Request.Scheme}://{Request.Host}/api/auth/confirm-email?userId={result.User.Id}&token={encodedToken}";
 
                 // Use queue-based email method instead of direct sending
                 _emailService.QueueEmailConfirmationAsync(result.User.Email, callbackUrl);
