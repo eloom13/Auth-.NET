@@ -1,8 +1,8 @@
 ﻿using Auth.API.Helpers;
 using Auth.Models.Data;
-using Auth.Models.DTOs;
 using Auth.Models.Entities;
 using Auth.Models.Exceptions;
+using Auth.Models.Request;
 using Auth.Services.Interfaces;
 using Auth.Services.Settings;
 using DotNetEnv;
@@ -19,14 +19,24 @@ namespace Auth.API.Extensions
         {
             services.AddIdentity<User, IdentityRole>(options =>
             {
+                // Password settings
                 options.Password.RequireDigit = true;
                 options.Password.RequireLowercase = true;
                 options.Password.RequireUppercase = true;
                 options.Password.RequireNonAlphanumeric = true;
                 options.Password.RequiredLength = 8;
+
+                // Lockout settings
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
                 options.Lockout.MaxFailedAccessAttempts = 5;
+
+                // User settings
                 options.User.RequireUniqueEmail = true;
+                //options.SignIn.RequireConfirmedEmail = true; // Require confirmed email
+
+                // Token provider settings
+                options.Tokens.EmailConfirmationTokenProvider = "Default";
+                options.Tokens.PasswordResetTokenProvider = "Default";
                 options.Tokens.AuthenticatorTokenProvider = TokenOptions.DefaultAuthenticatorProvider;
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()

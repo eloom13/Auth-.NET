@@ -1,11 +1,38 @@
-﻿using Microsoft.OpenApi.Models;
+﻿using Auth.Services.Interfaces;
+using Auth.Services.Services;
+using Auth.Services.Settings;
+using DotNetEnv;
+using Microsoft.OpenApi.Models;
 
 namespace Auth.API.Extensions
 {
     public static class InfrastructureServiceExtensions
     {
-        public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
+        public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, ConfigurationManager configuration)
         {
+            // Configure SMTP
+            var smtpHost = Env.GetString("SMTP_HOST");
+            var smtpPort = Env.GetInt("SMTP_PORT");
+            var smtpUsername = Env.GetString("SMTP_USERNAME");
+            var smtpPassword = Env.GetString("SMTP_PASSWORD");
+            var smtpEnableSsl = Env.GetBool("SMTP_ENABLE_SSL");
+            var smtpFromEmail = Env.GetString("SMTP_FROM_EMAIL");
+            var smtpFromName = Env.GetString("SMTP_FROM_NAME") ?? "Auth App";
+
+            services.Configure<SMTPSettings>(opts =>
+            {
+                opts.Host = smtpHost;
+                opts.Port = smtpPort;
+                opts.Username = smtpUsername;
+                opts.Password = smtpPassword;
+                opts.EnableSsl = smtpEnableSsl;
+                opts.FromEmail = smtpFromEmail;
+                opts.FromName = smtpFromName;
+            });
+
+            // Register EmailService
+            services.AddScoped<IEmailService, EmailService>();
+
             services.AddCors(options =>
             {
                 options.AddPolicy("AllowSpecificOrigin",
