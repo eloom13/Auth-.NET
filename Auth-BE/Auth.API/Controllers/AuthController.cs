@@ -115,13 +115,13 @@ namespace Auth.API.Controllers
 
             if (user == null)
             {
-                // We don't want to reveal that the email doesn't exist for security reasons
-                return Ok(ApiResponse<bool>.SuccessResponse(true, "If your email exists in our system, a confirmation email has been sent."));
+                // We don't reveal whether the email exists in the system for security reasons
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "If your email address exists in our system, a confirmation email has been sent."));
             }
 
             if (user.EmailConfirmed)
             {
-                return Ok(ApiResponse<bool>.SuccessResponse(true, "Your email is already confirmed."));
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Your email address is already confirmed."));
             }
 
             var confirmationToken = await _userService.GenerateEmailConfirmationTokenAsync(user.Id);
@@ -129,10 +129,12 @@ namespace Auth.API.Controllers
 
             var callbackUrl = $"{Request.Scheme}://{Request.Host}/api/auth/confirm-email?userId={user.Id}&token={encodedToken}";
 
-            await _emailService.SendEmailConfirmationAsync(user.Email, callbackUrl);
+            // Instead of sending the email directly, enqueue it using a message queue (e.g., RabbitMQ)
+            _emailService.QueueEmailConfirmationAsync(user.Email, callbackUrl);
 
-            return Ok(ApiResponse<bool>.SuccessResponse(true, "Confirmation email has been sent. Please check your inbox."));
+            return Ok(ApiResponse<bool>.SuccessResponse(true, "A confirmation email has been sent. Please check your inbox."));
         }
+
 
         [HttpPost("login")]
         public async Task<ActionResult<ApiResponse<AuthResponse>>> Login([FromBody] LoginRequest request)
