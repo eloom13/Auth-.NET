@@ -45,7 +45,7 @@ namespace Auth.Services.Services
         {
             _logger.LogInformation("Starting login for email {Email}", request.Email);
 
-            var (succeeded, user, requiresTwoFactor, emailNotConfirmed) = await _userService.VerifyCredentialsAsync(request.Email, request.Password);
+            var (succeeded, user, requiresTwoFactor, emailConfirmed) = await _userService.VerifyCredentialsAsync(request.Email, request.Password);
 
             if (!succeeded)
             {
@@ -60,7 +60,7 @@ namespace Auth.Services.Services
                 return new AuthResponse
                 {
                     RequiresTwoFactor = true,
-                    EmailNotConfirmed = emailNotConfirmed
+                    EmailConfirmed = emailConfirmed
                 };
             }
 
@@ -74,10 +74,10 @@ namespace Auth.Services.Services
                 RefreshToken = refreshToken,
                 Expiration = DateTime.UtcNow.AddMinutes(15), // This should come from the actual JWT token expiration time
                 RequiresTwoFactor = false,
-                EmailNotConfirmed = emailNotConfirmed // Include email confirmation status in response
+                EmailConfirmed = emailConfirmed // Include email confirmation status in response
             };
 
-            if (emailNotConfirmed)
+            if (emailConfirmed)
             {
                 _logger.LogInformation("Login successful for user {Email} with unconfirmed email", user.Email);
             }
@@ -109,7 +109,7 @@ namespace Auth.Services.Services
                     RefreshToken = newRefreshToken,
                     Expiration = DateTime.UtcNow.AddMinutes(15), // This should come from the actual JWT token expiration time
                     RequiresTwoFactor = false,
-                    EmailNotConfirmed = false
+                    EmailConfirmed = false
                 };
 
                 _logger.LogInformation("Token successfully refreshed for user {Email}", user.Email);

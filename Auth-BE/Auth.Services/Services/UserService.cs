@@ -46,8 +46,8 @@ namespace Auth.Services.Services
             {
                 var errors = result.Errors.Select(e => e.Description).ToList();
                 var errorMessage = string.Join(", ", errors);
-                _logger.LogError("Failed to create user: {Errors}", errorMessage);
-                throw new ValidationException($"Failed to create user: {errorMessage}");
+                _logger.LogError("{Errors}", errorMessage);
+                throw new ValidationException($"{errorMessage}");
             }
 
             await _userManager.AddToRoleAsync(user, "User");

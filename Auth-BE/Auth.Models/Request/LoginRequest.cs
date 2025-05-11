@@ -4,11 +4,12 @@ namespace Auth.Models.Request
 {
     public class LoginRequest
     {
-        [Required(ErrorMessage = "Email je obavezan")]
-        [EmailAddress(ErrorMessage = "Neispravan format email adrese")]
+        [Required(ErrorMessage = "Email is required")]
+        [EmailAddress(ErrorMessage = "Invalid email format")]
         public string Email { get; set; }
 
-        [Required(ErrorMessage = "Lozinka je obavezna")]
+        [Required(ErrorMessage = "Password is required")]
         public string Password { get; set; }
+
     }
 }
