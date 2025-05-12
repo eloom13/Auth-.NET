@@ -155,5 +155,17 @@ namespace Auth.Services.Services
 
             return user;
         }
+
+        public async Task<string> GetUserEmailByIdAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                _logger.LogWarning("User with ID {UserId} not found", userId);
+                throw new NotFoundException("User", userId);
+            }
+
+            return user.Email;
+        }
     }
 }

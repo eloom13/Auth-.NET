@@ -1,4 +1,5 @@
 ﻿using Auth.API.Helpers;
+using Auth.Models.Request;
 using Auth.Models.Response;
 using Auth.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -146,13 +147,16 @@ namespace Auth.API.Controllers
 
                 var result = await _authService.LoginAsync(request, ipAddress);
 
-                // Allow login even if email is not confirmed, but include the information in the response
-                if (result.EmailConfirmed)
+                // Only set the refresh token cookie if it's not null or empty
+                if (!string.IsNullOrEmpty(result.RefreshToken))
                 {
-                    // Set refresh token cookie
                     CookieHelper.SetRefreshTokenCookie(HttpContext, result.RefreshToken);
-                    result.RefreshToken = null;
+                    result.RefreshToken = null; // Clear after setting cookie
+                }
 
+                // Check for unconfirmed email
+                if (!result.EmailConfirmed)
+                {
                     // Return successful login but with a message about unconfirmed email
                     return Ok(ApiResponse<AuthResponse>.SuccessResponse(
                         result,
@@ -164,9 +168,6 @@ namespace Auth.API.Controllers
                 {
                     return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "2FA verification required"));
                 }
-
-                CookieHelper.SetRefreshTokenCookie(HttpContext, result.RefreshToken);
-                result.RefreshToken = null;
 
                 return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "Login successful"));
             }
@@ -209,23 +210,22 @@ namespace Auth.API.Controllers
             return Ok(ApiResponse<bool>.SuccessResponse(result, "Logout successful"));
         }
 
-        /*
         [Authorize]
         [HttpGet("generate-2fa-code")]
         public async Task<ActionResult<ApiResponse<string>>> GenerateTwoFactorCode()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var code = await _twoFactorService.GenerateTwoFactorCodeAsync(userId);
-            return Ok(ApiResponse<string>.SuccessResponse(code, "2FA kod generiran"));
-        }
+            var user = await _userService.GetUserByEmailAsync(userId);
 
-        [Authorize]
-        [HttpPost("verify-2fa-code")]
-        public async Task<ActionResult<ApiResponse<bool>>> VerifyTwoFactorCode([FromBody] string code)
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var result = await _twoFactorService.VerifyTwoFactorCodeAsync(userId, code);
-            return Ok(ApiResponse<bool>.SuccessResponse(result, "2FA kod verificiran"));
+            var code = await _twoFactorService.GenerateTwoFactorCodeAsync(userId);
+
+            // Send the code via email
+            _emailService.Queue2FACodeAsync(user.Email, code);
+
+            return Ok(ApiResponse<string>.SuccessResponse(
+                "Check your email for the verification code",
+                "A verification code has been sent to your email address"
+            ));
         }
 
         [HttpPost("two-factor")]
@@ -235,12 +235,13 @@ namespace Auth.API.Controllers
 
             CookieHelper.SetRefreshTokenCookie(HttpContext, result.RefreshToken);
 
-            // Ne šaljemo refresh token u response
+            // Don't send refresh token in response
             result.RefreshToken = null;
 
-            return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "2FA verifikacija uspješna"));
+            return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "2FA verification successful"));
         }
 
+        /*
         [HttpPost("refresh-token")]
         public async Task<ActionResult<ApiResponse<AuthResponse>>> RefreshToken([FromBody] RefreshTokenRequest request)
         {
@@ -258,7 +259,7 @@ namespace Auth.API.Controllers
             };
 
             var ipAddress = _httpContextAccessor.HttpContext.Connection.RemoteIpAddress?.ToString();
-            var result = await _authenticationService.RefreshTokenAsync(completeRequest, ipAddress);
+            var result = await _authService.RefreshTokenAsync(completeRequest, ipAddress);
 
             CookieHelper.SetRefreshTokenCookie(HttpContext, result.RefreshToken);
 

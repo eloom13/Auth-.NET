@@ -12,15 +12,21 @@ namespace Auth.Services.Services
         private readonly IUserService _userService;
         private readonly ITokenService _tokenService;
         private readonly ILogger<IAuthService> _logger;
+        private readonly IEmailService _emailService;
+        private readonly ITwoFactorService _twoFactorService;
 
         public AuthService(
             IUserService userService,
             ITokenService tokenService,
-            ILogger<IAuthService> logger)
+            ILogger<IAuthService> logger,
+            IEmailService emailService,
+            ITwoFactorService twoFactorService)
         {
             _userService = userService;
             _tokenService = tokenService;
             _logger = logger;
+            _emailService = emailService;
+            _twoFactorService = twoFactorService;
         }
 
         public async Task<(User User, RegisterResponse Response)> RegisterAsync(RegisterRequest request)
@@ -57,10 +63,18 @@ namespace Auth.Services.Services
             if (requiresTwoFactor)
             {
                 _logger.LogInformation("Login requires 2FA for user {Email}", request.Email);
+
+                // Generate a 2FA code
+                var code = await _twoFactorService.GenerateTwoFactorCodeAsync(user.Id);
+
+                // Send the code via email
+                _emailService.Queue2FACodeAsync(user.Email, code);
+
                 return new AuthResponse
                 {
                     RequiresTwoFactor = true,
-                    EmailConfirmed = emailConfirmed
+                    EmailConfirmed = emailConfirmed,
+                    RefreshToken = string.Empty
                 };
             }
 
