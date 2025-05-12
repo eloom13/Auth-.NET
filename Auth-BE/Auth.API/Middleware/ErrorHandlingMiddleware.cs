@@ -37,11 +37,7 @@ namespace Auth.API.Middleware
 
             if (exception is AppExceptions appException)
             {
-                // Log samo neozbiljne ili neočekivane AppExceptions ako želiš
-                if (appException is not ConflictException)
-                {
-                    _logger.LogWarning(appException, "Handled application exception: {Message}", appException.Message);
-                }
+                _logger.LogWarning("Application exception: {Message}", appException.Message);
 
                 code = exception switch
                 {

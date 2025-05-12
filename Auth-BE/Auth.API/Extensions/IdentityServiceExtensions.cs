@@ -32,7 +32,7 @@ namespace Auth.API.Extensions
 
                 // User settings
                 options.User.RequireUniqueEmail = true;
-                //options.SignIn.RequireConfirmedEmail = true; // Require confirmed email
+                options.SignIn.RequireConfirmedEmail = false; // Require confirmed email
 
                 // Token provider settings
                 options.Tokens.EmailConfirmationTokenProvider = "Default";
@@ -100,7 +100,7 @@ namespace Auth.API.Extensions
                                 var authService = httpContext.RequestServices.GetRequiredService<IAuthService>();
                                 var logger = httpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
 
-                                logger.LogInformation("Pokušavam osvježiti istekli token");
+                                logger.LogInformation("Trying to refresh expired token");
 
                                 var refreshRequest = new RefreshTokenRequest
                                 {

@@ -243,34 +243,5 @@ namespace Auth.API.Controllers
 
             return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "2FA verification successful"));
         }
-
-        /*
-        [HttpPost("refresh-token")]
-        public async Task<ActionResult<ApiResponse<AuthResponse>>> RefreshToken([FromBody] RefreshTokenRequest request)
-        {
-            var refreshToken = Request.Cookies["refresh_token"];
-
-            if (string.IsNullOrEmpty(refreshToken))
-            {
-                return Unauthorized(ApiResponse<AuthResponse>.ErrorResponse("Refresh token nije pronađen", null, 401));
-            }
-
-            var completeRequest = new RefreshTokenRequest
-            {
-                Token = request.Token,
-                RefreshToken = refreshToken
-            };
-
-            var ipAddress = _httpContextAccessor.HttpContext.Connection.RemoteIpAddress?.ToString();
-            var result = await _authService.RefreshTokenAsync(completeRequest, ipAddress);
-
-            CookieHelper.SetRefreshTokenCookie(HttpContext, result.RefreshToken);
-
-            // Ne šaljemo refresh token u response
-            result.RefreshToken = null;
-
-            return Ok(ApiResponse<AuthResponse>.SuccessResponse(result, "Token osvježen"));
-        }
-        */
     }
 }

@@ -31,7 +31,6 @@ namespace Auth.API.Extensions
                     }
                 });
 
-                // Register email consumer as a background service
                 services.AddHostedService<EmailConsumerService>();
             }
             catch (Exception ex)
@@ -40,7 +39,6 @@ namespace Auth.API.Extensions
                     .CreateLogger("RabbitMQServiceExtensions");
                 logger.LogError(ex, "Error setting up RabbitMQ services");
 
-                // Register fallback implementation
                 services.AddSingleton<IMessageBrokerService, NoOpMessageBrokerService>();
             }
 
