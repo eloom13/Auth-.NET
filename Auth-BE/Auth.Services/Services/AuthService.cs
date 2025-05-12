@@ -129,6 +129,11 @@ namespace Auth.Services.Services
                 _logger.LogInformation("Token successfully refreshed for user {Email}", user.Email);
                 return response;
             }
+            catch (SecurityException ex)
+            {
+                _logger.LogWarning("Security exception during token refresh: {Message}", ex.Message);
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Error occurred while refreshing token");
