@@ -109,25 +109,23 @@ namespace Auth.Services.Services
 
             try
             {
-                var user = await _tokenService.ValidateRefreshTokenAsync(request.Token, request.RefreshToken);
+                // Validira refresh token i dohvaća korisnika
+                var user = await _tokenService.ValidateRefreshTokenAsync(request.Token, request.RefreshToken, ipAddress);
 
-                await _tokenService.RevokeRefreshTokenAsync(request.RefreshToken, user.Id, ipAddress);
-
-                var jwtToken = await _tokenService.GenerateJwtTokenAsync(user);
-                var newRefreshToken = await _tokenService.GenerateRefreshTokenAsync(user, ipAddress);
-
-                // Prepare response
-                var response = new AuthResponse
-                {
-                    Token = jwtToken,
-                    RefreshToken = newRefreshToken,
-                    Expiration = DateTime.UtcNow.AddMinutes(15), // This should come from the actual JWT token expiration time
-                    RequiresTwoFactor = false,
-                    EmailConfirmed = false
-                };
+                // Koristi metodu za rotaciju koja pravilno postavlja ReplacedByToken
+                var result = await _tokenService.RotateRefreshTokenAsync(
+                    request.Token, request.RefreshToken, user.Id, ipAddress);
 
                 _logger.LogInformation("Token successfully refreshed for user {Email}", user.Email);
-                return response;
+
+                return new AuthResponse
+                {
+                    Token = result.Token,
+                    RefreshToken = result.RefreshToken,
+                    Expiration = result.Expiration,
+                    RequiresTwoFactor = false,
+                    EmailConfirmed = user.EmailConfirmed
+                };
             }
             catch (SecurityException ex)
             {
