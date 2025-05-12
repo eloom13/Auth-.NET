@@ -215,16 +215,19 @@ namespace Auth.API.Controllers
         public async Task<ActionResult<ApiResponse<string>>> GenerateTwoFactorCode()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var user = await _userService.GetUserByEmailAsync(userId);
 
+            // Dohvati email korisnika
+            var userEmail = await _userService.GetUserEmailByIdAsync(userId);
+
+            // Generiraj kod za 2FA
             var code = await _twoFactorService.GenerateTwoFactorCodeAsync(userId);
 
-            // Send the code via email
-            _emailService.Queue2FACodeAsync(user.Email, code);
+            // Pošalji kod putem e-maila
+            _emailService.Queue2FACodeAsync(userEmail, code);
 
             return Ok(ApiResponse<string>.SuccessResponse(
                 "Check your email for the verification code",
-                "A verification code has been sent to your email address"
+                "A verification code has been sent to your email address. The code will expire in 15 minutes."
             ));
         }
 

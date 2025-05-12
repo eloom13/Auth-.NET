@@ -21,6 +21,7 @@ builder.Services.AddScoped<ITwoFactorService, TwoFactorService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IEmailService, EmailService>();
 
+builder.Services.AddDistributedMemoryCache();
 builder.Services.AddMapster();
 
 builder.Services.AddHttpContextAccessor();

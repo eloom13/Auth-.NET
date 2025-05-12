@@ -4,6 +4,7 @@ using Auth.Models.Request;
 using Auth.Models.Response;
 using Auth.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 
 namespace Auth.Services.Services
@@ -13,12 +14,18 @@ namespace Auth.Services.Services
         private readonly UserManager<User> _userManager;
         private readonly ITokenService _tokenService;
         private readonly ILogger<TwoFactorService> _logger;
+        private readonly IDistributedCache _cache;
 
-        public TwoFactorService(UserManager<User> userManager, ITokenService tokenService, ILogger<TwoFactorService> logger)
+        public TwoFactorService(
+            UserManager<User> userManager,
+            ITokenService tokenService,
+            ILogger<TwoFactorService> logger,
+            IDistributedCache cache)
         {
             _userManager = userManager;
             _tokenService = tokenService;
             _logger = logger;
+            _cache = cache;
         }
 
         public async Task<bool> SetupTwoFactorAsync(string userId)
@@ -51,17 +58,21 @@ namespace Auth.Services.Services
                 throw new NotFoundException("User", userId);
             }
 
-            // Koristite "Email" token provider umjesto authenticator providera
-            var token = await _userManager.GenerateUserTokenAsync(
-                user,
-                TokenOptions.DefaultEmailProvider, // Koristi email provider
-                "EmailAuthenticator" // Svrha tokena
-            );
+            // Generiraj 6-cifreni kod
+            var code = GenerateRandomCode();
 
-            _logger.LogInformation("2FA code generated for user {UserId}: {Token}", userId, token);
-            return token;
+            // Pohrani kod u cache na 15 minuta
+            var cacheKey = $"2FA_{userId}";
+            var cacheOptions = new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(1)
+            };
+
+            await _cache.SetStringAsync(cacheKey, code, cacheOptions);
+
+            _logger.LogInformation("2FA code generated for user {UserId}: {Code}", userId, code);
+            return code;
         }
-
 
         public async Task<AuthResponse> ValidateTwoFactorAsync(TwoFactorRequest request)
         {
@@ -72,21 +83,27 @@ namespace Auth.Services.Services
                 throw new NotFoundException("User with this email does not exist");
             }
 
-            // Koristite isti način verifikacije 
-            var isValid = await _userManager.VerifyUserTokenAsync(
-                user,
-                TokenOptions.DefaultEmailProvider,
-                "EmailAuthenticator",
-                request.TwoFactorCode
-            );
+            // Provjeri je li kod ispravan
+            var cacheKey = $"2FA_{user.Id}";
+            var storedCode = await _cache.GetStringAsync(cacheKey);
 
-            if (!isValid)
+            if (string.IsNullOrEmpty(storedCode))
+            {
+                _logger.LogWarning("2FA code not found or expired for user {UserId}", user.Id);
+                throw new AuthenticationException("Verification code expired or not found. Please request a new code.");
+            }
+
+            if (storedCode != request.TwoFactorCode)
             {
                 _logger.LogWarning("Invalid 2FA code for user {Email}", request.Email);
                 throw new AuthenticationException("Invalid verification code");
             }
 
-            // Generate tokens
+            // Kod je validan, odmah ga invalidiramo da se ne može ponovo koristiti
+            await _cache.RemoveAsync(cacheKey);
+            _logger.LogInformation("2FA code successfully verified and invalidated for user {UserId}", user.Id);
+
+            // Generiraj tokene za autentifikaciju
             var jwtToken = await _tokenService.GenerateJwtTokenAsync(user);
             var refreshToken = await _tokenService.GenerateRefreshTokenAsync(user);
 
@@ -98,6 +115,12 @@ namespace Auth.Services.Services
                 RequiresTwoFactor = false,
                 EmailConfirmed = user.EmailConfirmed
             };
+        }
+
+        private string GenerateRandomCode()
+        {
+            // Generiranje nasumičnog 6-cifrenog koda za 2FA
+            return new Random().Next(100000, 999999).ToString();
         }
     }
 }
