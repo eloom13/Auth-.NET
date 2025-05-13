@@ -4,6 +4,7 @@ using Auth.Models.Response;
 using Auth.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Security.Claims;
 using System.Text;
@@ -136,7 +137,7 @@ namespace Auth.API.Controllers
             return Ok(ApiResponse<bool>.SuccessResponse(true, "A confirmation email has been sent. Please check your inbox."));
         }
 
-
+        [EnableRateLimiting("auth")]
         [HttpPost("login")]
         public async Task<ActionResult<ApiResponse<AuthResponse>>> Login([FromBody] LoginRequest request)
         {
