@@ -12,15 +12,21 @@ namespace Auth.Services.Services
         private readonly IUserService _userService;
         private readonly ITokenService _tokenService;
         private readonly ILogger<IAuthService> _logger;
+        private readonly IEmailService _emailService;
+        private readonly ITwoFactorService _twoFactorService;
 
         public AuthService(
             IUserService userService,
             ITokenService tokenService,
-            ILogger<IAuthService> logger)
+            ILogger<IAuthService> logger,
+            IEmailService emailService,
+            ITwoFactorService twoFactorService)
         {
             _userService = userService;
             _tokenService = tokenService;
             _logger = logger;
+            _emailService = emailService;
+            _twoFactorService = twoFactorService;
         }
 
         public async Task<(User User, RegisterResponse Response)> RegisterAsync(RegisterRequest request)
@@ -29,7 +35,6 @@ namespace Auth.Services.Services
 
             var user = await _userService.CreateUserAsync(request);
 
-            // We don't generate a token immediately for a new user since email confirmation is required
             var response = new RegisterResponse
             {
                 UserId = user.Id,
@@ -53,18 +58,22 @@ namespace Auth.Services.Services
                 throw new AuthenticationException("Invalid email or password.");
             }
 
-            // If requires two-factor, don't generate tokens yet
             if (requiresTwoFactor)
             {
                 _logger.LogInformation("Login requires 2FA for user {Email}", request.Email);
+
+                var code = await _twoFactorService.GenerateTwoFactorCodeAsync(user.Id);
+
+                _emailService.Queue2FACodeAsync(user.Email, code);
+
                 return new AuthResponse
                 {
                     RequiresTwoFactor = true,
-                    EmailConfirmed = emailConfirmed
+                    EmailConfirmed = emailConfirmed,
+                    RefreshToken = string.Empty
                 };
             }
 
-            // Generate tokens regardless of email confirmation status
             var jwtToken = await _tokenService.GenerateJwtTokenAsync(user);
             var refreshToken = await _tokenService.GenerateRefreshTokenAsync(user, ipAddress);
 
@@ -72,9 +81,9 @@ namespace Auth.Services.Services
             {
                 Token = jwtToken,
                 RefreshToken = refreshToken,
-                Expiration = DateTime.UtcNow.AddMinutes(15), // This should come from the actual JWT token expiration time
+                Expiration = DateTime.UtcNow.AddMinutes(15),
                 RequiresTwoFactor = false,
-                EmailConfirmed = emailConfirmed // Include email confirmation status in response
+                EmailConfirmed = emailConfirmed
             };
 
             if (emailConfirmed)
@@ -95,25 +104,26 @@ namespace Auth.Services.Services
 
             try
             {
-                var user = await _tokenService.ValidateRefreshTokenAsync(request.Token, request.RefreshToken);
+                var user = await _tokenService.ValidateRefreshTokenAsync(request.Token, request.RefreshToken, ipAddress);
 
-                await _tokenService.RevokeRefreshTokenAsync(request.RefreshToken, user.Id, ipAddress);
-
-                var jwtToken = await _tokenService.GenerateJwtTokenAsync(user);
-                var newRefreshToken = await _tokenService.GenerateRefreshTokenAsync(user, ipAddress);
-
-                // Prepare response
-                var response = new AuthResponse
-                {
-                    Token = jwtToken,
-                    RefreshToken = newRefreshToken,
-                    Expiration = DateTime.UtcNow.AddMinutes(15), // This should come from the actual JWT token expiration time
-                    RequiresTwoFactor = false,
-                    EmailConfirmed = false
-                };
+                var result = await _tokenService.RotateRefreshTokenAsync(
+                    request.Token, request.RefreshToken, user.Id, ipAddress);
 
                 _logger.LogInformation("Token successfully refreshed for user {Email}", user.Email);
-                return response;
+
+                return new AuthResponse
+                {
+                    Token = result.Token,
+                    RefreshToken = result.RefreshToken,
+                    Expiration = result.Expiration,
+                    RequiresTwoFactor = false,
+                    EmailConfirmed = user.EmailConfirmed
+                };
+            }
+            catch (SecurityException ex)
+            {
+                _logger.LogWarning("Security exception during token refresh: {Message}", ex.Message);
+                throw;
             }
             catch (Exception ex)
             {

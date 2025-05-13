@@ -37,15 +37,16 @@ namespace Auth.API.Middleware
 
             if (exception is AppExceptions appException)
             {
-                _logger.LogError(appException, "Application exception: {Message}", appException.Message);
+                _logger.LogWarning("Application error: {Message}", appException.Message);
 
                 code = exception switch
                 {
-                    NotFoundException _ => HttpStatusCode.NotFound,
-                    ValidationException _ => HttpStatusCode.BadRequest,
-                    ForbiddenAccessException _ => HttpStatusCode.Forbidden,
-                    AuthenticationException _ => HttpStatusCode.Unauthorized,
-                    ConflictException _ => HttpStatusCode.Conflict,
+                    NotFoundException => HttpStatusCode.NotFound,
+                    ValidationException => HttpStatusCode.BadRequest,
+                    ForbiddenAccessException => HttpStatusCode.Forbidden,
+                    AuthenticationException => HttpStatusCode.Unauthorized,
+                    ConflictException => HttpStatusCode.Conflict,
+                    SecurityException => HttpStatusCode.Unauthorized,
                     _ => HttpStatusCode.InternalServerError
                 };
 
@@ -53,22 +54,17 @@ namespace Auth.API.Middleware
             }
             else
             {
-                _logger.LogError(exception, "UNHANDLED EXCEPTION: {Message}", exception.Message);
+                _logger.LogError("Unexpected error: {Message}", exception.Message);
 
-                if (_environment.IsDevelopment())
-                {
-                    errorResponse = ApiResponse<object>.ErrorResponse(
+                errorResponse = _environment.IsDevelopment()
+                    ? ApiResponse<object>.ErrorResponse(
                         $"An unexpected error occurred: {exception.Message}",
                         new List<string> { exception.StackTrace },
-                        (int)code);
-                }
-                else
-                {
-                    errorResponse = ApiResponse<object>.ErrorResponse(
+                        (int)code)
+                    : ApiResponse<object>.ErrorResponse(
                         "An unexpected error occurred. Please try again or contact the administrator.",
                         null,
                         (int)code);
-                }
             }
 
             context.Response.ContentType = "application/json";
@@ -81,5 +77,6 @@ namespace Auth.API.Middleware
 
             await context.Response.WriteAsync(result);
         }
+
     }
 }

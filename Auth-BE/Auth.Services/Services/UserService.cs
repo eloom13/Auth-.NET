@@ -24,9 +24,35 @@ namespace Auth.Services.Services
             _mapper = mapper;
         }
 
+        public async Task<User> GetUserAsync(string identifier, bool byEmail = false, bool throwIfNotFound = true)
+        {
+            User user = null;
+            string idType = byEmail ? "email" : "ID";
+
+            if (byEmail)
+                user = await _userManager.FindByEmailAsync(identifier);
+            else
+                user = await _userManager.FindByIdAsync(identifier);
+
+            if (user == null)
+            {
+                _logger.LogWarning("User with {IdType} {Identifier} not found", idType, identifier);
+
+                if (throwIfNotFound)
+                {
+                    if (byEmail)
+                        throw new NotFoundException($"User with email {identifier}", null);
+                    else
+                        throw new NotFoundException("User", identifier);
+                }
+            }
+
+            return user;
+        }
+
         public async Task<User> CreateUserAsync(RegisterRequest request)
         {
-            var existingUser = await _userManager.FindByEmailAsync(request.Email);
+            var existingUser = await GetUserAsync(request.Email, byEmail: true, throwIfNotFound: false);
             if (existingUser != null)
             {
                 _logger.LogWarning("User with email {Email} already exists", request.Email);
@@ -38,33 +64,24 @@ namespace Auth.Services.Services
             user.CreatedAt = DateTime.UtcNow;
             user.IsActive = true;
             user.TwoFactorEnabled = false;
-            user.EmailConfirmed = false;  // Set email as not confirmed initially
+            user.EmailConfirmed = false;
 
             var result = await _userManager.CreateAsync(user, request.Password);
-
             if (!result.Succeeded)
             {
-                var errors = result.Errors.Select(e => e.Description).ToList();
-                var errorMessage = string.Join(", ", errors);
-                _logger.LogError("{Errors}", errorMessage);
-                throw new ValidationException($"{errorMessage}");
+                var errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+                _logger.LogError("User creation failed: {Errors}", errorMessage);
+                throw new ValidationException(errorMessage);
             }
 
             await _userManager.AddToRoleAsync(user, "User");
             _logger.LogInformation("User {Email} created successfully", request.Email);
-
             return user;
         }
 
         public async Task<CurrentUserResponse> GetCurrentUserAsync(string userId)
         {
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-            {
-                _logger.LogWarning("User with ID {UserId} not found", userId);
-                throw new NotFoundException("User", userId);
-            }
-
+            var user = await GetUserAsync(userId, throwIfNotFound: true);
             var roles = await _userManager.GetRolesAsync(user);
 
             var currentUserResponse = _mapper.Map<CurrentUserResponse>(user);
@@ -77,12 +94,9 @@ namespace Auth.Services.Services
 
         public async Task<(bool Succeeded, User User, bool RequiresTwoFactor, bool EmailNotConfirmed)> VerifyCredentialsAsync(string email, string password)
         {
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await GetUserAsync(email, byEmail: true, throwIfNotFound: false);
             if (user == null)
-            {
-                _logger.LogWarning("Login attempt with non-existent email: {Email}", email);
                 return (false, null, false, false);
-            }
 
             var result = await _signInManager.CheckPasswordSignInAsync(user, password, false);
             if (!result.Succeeded)
@@ -91,12 +105,9 @@ namespace Auth.Services.Services
                 return (false, null, false, false);
             }
 
-            // Check if email is confirmed, but don't block login
             bool emailNotConfirmed = !user.EmailConfirmed;
             if (emailNotConfirmed)
-            {
                 _logger.LogInformation("Login for user {Email} with unconfirmed email", email);
-            }
 
             if (user.TwoFactorEnabled)
             {
@@ -110,29 +121,17 @@ namespace Auth.Services.Services
 
         public async Task<string> GenerateEmailConfirmationTokenAsync(string userId)
         {
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-            {
-                _logger.LogWarning("User with ID {UserId} not found when generating email confirmation token", userId);
-                throw new NotFoundException("User", userId);
-            }
-
+            var user = await GetUserAsync(userId, throwIfNotFound: true);
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             _logger.LogInformation("Email confirmation token generated for user {Email}", user.Email);
-
             return token;
         }
 
         public async Task<bool> ConfirmEmailAsync(string userId, string token)
         {
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-            {
-                _logger.LogWarning("User with ID {UserId} not found when confirming email", userId);
-                throw new NotFoundException("User", userId);
-            }
-
+            var user = await GetUserAsync(userId, throwIfNotFound: true);
             var result = await _userManager.ConfirmEmailAsync(user, token);
+
             if (!result.Succeeded)
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
@@ -146,14 +145,13 @@ namespace Auth.Services.Services
 
         public async Task<User> GetUserByEmailAsync(string email)
         {
-            var user = await _userManager.FindByEmailAsync(email);
-            if (user == null)
-            {
-                _logger.LogWarning("User with email {Email} not found", email);
-                // We're not throwing an exception here to handle this case in the controller
-            }
+            return await GetUserAsync(email, byEmail: true, throwIfNotFound: false);
+        }
 
-            return user;
+        public async Task<string> GetUserEmailByIdAsync(string userId)
+        {
+            var user = await GetUserAsync(userId, throwIfNotFound: true);
+            return user.Email;
         }
     }
 }

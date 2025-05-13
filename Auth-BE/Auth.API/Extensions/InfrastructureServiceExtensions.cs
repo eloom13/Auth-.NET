@@ -1,6 +1,4 @@
-﻿using Auth.Services.Interfaces;
-using Auth.Services.Services;
-using Auth.Services.Settings;
+﻿using Auth.Services.Settings;
 using DotNetEnv;
 using Microsoft.OpenApi.Models;
 
@@ -29,9 +27,6 @@ namespace Auth.API.Extensions
                 opts.FromEmail = smtpFromEmail;
                 opts.FromName = smtpFromName;
             });
-
-            // Register EmailService
-            services.AddScoped<IEmailService, EmailService>();
 
             services.AddCors(options =>
             {

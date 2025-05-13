@@ -15,6 +15,7 @@ builder.Services.AddPersistenceServices(builder.Configuration);
 builder.Services.AddIdentityServices(builder.Configuration);
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddRabbitMQServices(builder.Configuration);
+builder.Services.AddAppRateLimiter(builder.Configuration);
 
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -22,6 +23,7 @@ builder.Services.AddScoped<ITwoFactorService, TwoFactorService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IEmailService, EmailService>();
 
+builder.Services.AddDistributedMemoryCache();
 builder.Services.AddMapster();
 
 builder.Services.AddHttpContextAccessor();
@@ -40,6 +42,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
 });
 
+
 var app = builder.Build();
 
 // === Middlewares ===
@@ -57,6 +60,8 @@ app.UseHttpsRedirection();
 app.UseRouting();
 
 app.UseCors("AllowSpecificOrigin");
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

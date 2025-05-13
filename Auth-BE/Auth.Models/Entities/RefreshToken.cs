@@ -29,6 +29,10 @@ namespace Auth.Models.Entities
 
         public DateTime? RevokedAt { get; set; }
 
+        public int RefreshCount { get; set; } = 0;
+
+        public string? RevokeReason { get; set; }
+
 
         // Additional properties for tracking
         public string? CreatedByIp { get; set; }

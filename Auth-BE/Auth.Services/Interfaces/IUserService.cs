@@ -12,5 +12,6 @@ namespace Auth.Services.Interfaces
         Task<string> GenerateEmailConfirmationTokenAsync(string userId);
         Task<bool> ConfirmEmailAsync(string userId, string token);
         Task<User> GetUserByEmailAsync(string email);
+        Task<string> GetUserEmailByIdAsync(string userId);
     }
 }

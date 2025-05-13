@@ -32,7 +32,7 @@ namespace Auth.API.Extensions
 
                 // User settings
                 options.User.RequireUniqueEmail = true;
-                //options.SignIn.RequireConfirmedEmail = true; // Require confirmed email
+                options.SignIn.RequireConfirmedEmail = false; // Require confirmed email
 
                 // Token provider settings
                 options.Tokens.EmailConfirmationTokenProvider = "Default";
@@ -53,6 +53,15 @@ namespace Auth.API.Extensions
                 opts.Audience = audience;
                 opts.ExpirationInMinutes = 15; // TESTING
                 opts.RefreshTokenExpirationInDays = 7;
+            });
+
+            services.Configure<RefreshTokenSettings>(opts =>
+            {
+                opts.ExpirationInDays = 7;
+                opts.MaxRefreshCount = 100;
+                opts.MaxActiveSessionsPerUser = 5;
+                opts.EnableTokenRotation = true;
+                opts.DetectTokenReuse = true;
             });
 
             var key = Encoding.ASCII.GetBytes(secret);
@@ -100,7 +109,7 @@ namespace Auth.API.Extensions
                                 var authService = httpContext.RequestServices.GetRequiredService<IAuthService>();
                                 var logger = httpContext.RequestServices.GetRequiredService<ILogger<JwtBearerEvents>>();
 
-                                logger.LogInformation("Pokušavam osvježiti istekli token");
+                                logger.LogInformation("Trying to refresh expired token");
 
                                 var refreshRequest = new RefreshTokenRequest
                                 {

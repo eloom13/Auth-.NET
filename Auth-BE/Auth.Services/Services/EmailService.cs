@@ -27,7 +27,6 @@ namespace Auth.Services.Services
             _messageBroker = messageBroker;
         }
 
-        // Existing synchronous methods
         public async Task SendEmailAsync(string to, string subject, string htmlBody)
         {
             try
@@ -89,8 +88,6 @@ namespace Auth.Services.Services
 
             await SendEmailAsync(email, subject, body);
         }
-
-        // New asynchronous queue-based methods
         public void QueueEmailAsync(string to, string subject, string htmlBody)
         {
             var message = new EmailMessage
@@ -128,6 +125,40 @@ namespace Auth.Services.Services
                     <p>If you didn't request this password reset, please ignore this email and your password will remain unchanged.</p>
                 </body>
                 </html>";
+
+            QueueEmailAsync(email, subject, body);
+        }
+
+        public async Task Send2FACodeAsync(string email, string code)
+        {
+            string subject = "Your Two-Factor Authentication Code";
+            string body = $@"
+        <html>
+        <body>
+            <h2>Your Authentication Code</h2>
+            <p>Here is your two-factor authentication code:</p>
+            <h1 style='letter-spacing: 2px; font-family: monospace; padding: 10px; background-color: #f4f4f4; display: inline-block;'>{code}</h1>
+            <p>This code will expire in 10 minutes.</p>
+            <p>If you didn't request this code, please ignore this email and secure your account.</p>
+        </body>
+        </html>";
+
+            await SendEmailAsync(email, subject, body);
+        }
+
+        public void Queue2FACodeAsync(string email, string code)
+        {
+            string subject = "Your Two-Factor Authentication Code";
+            string body = $@"
+        <html>
+        <body>
+            <h2>Your Authentication Code</h2>
+            <p>Here is your two-factor authentication code:</p>
+            <h1 style='letter-spacing: 2px; font-family: monospace; padding: 10px; background-color: #f4f4f4; display: inline-block;'>{code}</h1>
+            <p>This code will expire in 10 minutes.</p>
+            <p>If you didn't request this code, please ignore this email and secure your account.</p>
+        </body>
+        </html>";
 
             QueueEmailAsync(email, subject, body);
         }
