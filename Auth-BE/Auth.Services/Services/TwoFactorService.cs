@@ -58,10 +58,8 @@ namespace Auth.Services.Services
                 throw new NotFoundException("User", userId);
             }
 
-            // Generiraj 6-cifreni kod
             var code = GenerateRandomCode();
 
-            // Pohrani kod u cache na 15 minuta
             var cacheKey = $"2FA_{userId}";
             var cacheOptions = new DistributedCacheEntryOptions
             {
@@ -83,7 +81,6 @@ namespace Auth.Services.Services
                 throw new NotFoundException("User with this email does not exist");
             }
 
-            // Provjeri je li kod ispravan
             var cacheKey = $"2FA_{user.Id}";
             var storedCode = await _cache.GetStringAsync(cacheKey);
 
@@ -99,11 +96,9 @@ namespace Auth.Services.Services
                 throw new AuthenticationException("Invalid verification code");
             }
 
-            // Kod je validan, odmah ga invalidiramo da se ne može ponovo koristiti
             await _cache.RemoveAsync(cacheKey);
             _logger.LogInformation("2FA code successfully verified and invalidated for user {UserId}", user.Id);
 
-            // Generiraj tokene za autentifikaciju
             var jwtToken = await _tokenService.GenerateJwtTokenAsync(user);
             var refreshToken = await _tokenService.GenerateRefreshTokenAsync(user);
 
@@ -111,7 +106,7 @@ namespace Auth.Services.Services
             {
                 Token = jwtToken,
                 RefreshToken = refreshToken,
-                Expiration = DateTime.UtcNow.AddMinutes(15), // Trebalo bi odgovarati JWT isteku
+                Expiration = DateTime.UtcNow.AddMinutes(15),
                 RequiresTwoFactor = false,
                 EmailConfirmed = user.EmailConfirmed
             };
@@ -119,7 +114,6 @@ namespace Auth.Services.Services
 
         private string GenerateRandomCode()
         {
-            // Generiranje nasumičnog 6-cifrenog koda za 2FA
             return new Random().Next(100000, 999999).ToString();
         }
     }

@@ -33,7 +33,6 @@ namespace Auth.Services.Services
             _port = port;
             _logger = logger;
 
-            // We'll initialize the connection lazily on first use
             _logger.LogInformation("RabbitMQ service created with settings: Host={Host}, Port={Port}, Username={Username}",
                 hostName, port, username);
         }
@@ -58,7 +57,6 @@ namespace Auth.Services.Services
                         Port = _port,
                         UserName = _username,
                         Password = _password,
-                        // Add timeout to avoid long hangs
                         RequestedConnectionTimeout = TimeSpan.FromSeconds(3)
                     };
 
@@ -108,7 +106,6 @@ namespace Auth.Services.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error publishing message to queue {QueueName}", queueName);
-                // Don't rethrow - we want to fail gracefully if RabbitMQ is down
             }
         }
 
@@ -160,7 +157,6 @@ namespace Auth.Services.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error starting consumer for queue {QueueName}", queueName);
-                // Don't rethrow - we want to fail gracefully if RabbitMQ is down
             }
         }
 

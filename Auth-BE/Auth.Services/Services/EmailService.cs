@@ -27,7 +27,6 @@ namespace Auth.Services.Services
             _messageBroker = messageBroker;
         }
 
-        // Existing synchronous methods
         public async Task SendEmailAsync(string to, string subject, string htmlBody)
         {
             try
@@ -89,8 +88,6 @@ namespace Auth.Services.Services
 
             await SendEmailAsync(email, subject, body);
         }
-
-        // New asynchronous queue-based methods
         public void QueueEmailAsync(string to, string subject, string htmlBody)
         {
             var message = new EmailMessage

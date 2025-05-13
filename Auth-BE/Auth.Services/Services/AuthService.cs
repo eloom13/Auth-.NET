@@ -35,7 +35,6 @@ namespace Auth.Services.Services
 
             var user = await _userService.CreateUserAsync(request);
 
-            // We don't generate a token immediately for a new user since email confirmation is required
             var response = new RegisterResponse
             {
                 UserId = user.Id,
@@ -59,15 +58,12 @@ namespace Auth.Services.Services
                 throw new AuthenticationException("Invalid email or password.");
             }
 
-            // If requires two-factor, don't generate tokens yet
             if (requiresTwoFactor)
             {
                 _logger.LogInformation("Login requires 2FA for user {Email}", request.Email);
 
-                // Generate a 2FA code
                 var code = await _twoFactorService.GenerateTwoFactorCodeAsync(user.Id);
 
-                // Send the code via email
                 _emailService.Queue2FACodeAsync(user.Email, code);
 
                 return new AuthResponse
@@ -78,7 +74,6 @@ namespace Auth.Services.Services
                 };
             }
 
-            // Generate tokens regardless of email confirmation status
             var jwtToken = await _tokenService.GenerateJwtTokenAsync(user);
             var refreshToken = await _tokenService.GenerateRefreshTokenAsync(user, ipAddress);
 
@@ -86,9 +81,9 @@ namespace Auth.Services.Services
             {
                 Token = jwtToken,
                 RefreshToken = refreshToken,
-                Expiration = DateTime.UtcNow.AddMinutes(15), // This should come from the actual JWT token expiration time
+                Expiration = DateTime.UtcNow.AddMinutes(15),
                 RequiresTwoFactor = false,
-                EmailConfirmed = emailConfirmed // Include email confirmation status in response
+                EmailConfirmed = emailConfirmed
             };
 
             if (emailConfirmed)
@@ -109,10 +104,8 @@ namespace Auth.Services.Services
 
             try
             {
-                // Validira refresh token i dohvaća korisnika
                 var user = await _tokenService.ValidateRefreshTokenAsync(request.Token, request.RefreshToken, ipAddress);
 
-                // Koristi metodu za rotaciju koja pravilno postavlja ReplacedByToken
                 var result = await _tokenService.RotateRefreshTokenAsync(
                     request.Token, request.RefreshToken, user.Id, ipAddress);
 

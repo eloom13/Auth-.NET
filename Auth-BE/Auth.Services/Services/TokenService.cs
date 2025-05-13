@@ -188,7 +188,6 @@ namespace Auth.Services.Services
         public async Task<AuthResponse> RotateRefreshTokenAsync(
             string jwtToken, string refreshToken, string userId, string ipAddress = null)
         {
-            // Pronalazimo stari token
             var oldToken = await _context.RefreshTokens
                 .SingleOrDefaultAsync(rt => rt.Token == refreshToken && rt.UserId == userId);
 
@@ -197,25 +196,19 @@ namespace Auth.Services.Services
                 throw new AuthenticationException("Refresh token not found.");
             }
 
-            // Generiramo novi JWT token
             var user = await _userManager.FindByIdAsync(userId);
             var newJwtToken = await GenerateJwtTokenAsync(user);
 
-            // Generiramo novi refresh token samo ako je rotacija uključena
             if (_refreshTokenSettings.EnableTokenRotation)
             {
-                // Povećavamo brojač refresh-ova
                 oldToken.RefreshCount++;
 
-                // Opozivamo stari token
                 oldToken.RevokedAt = DateTime.UtcNow;
                 oldToken.RevokedByIp = ipAddress;
                 oldToken.RevokeReason = "Replaced by new token (normal rotation)";
 
-                // Generiramo novi refresh token
                 var newRefreshToken = await GenerateRefreshTokenAsync(user, ipAddress);
 
-                // Povezujemo stari token s novim
                 oldToken.ReplacedByToken = newRefreshToken;
 
                 await _context.SaveChangesAsync();
@@ -231,7 +224,6 @@ namespace Auth.Services.Services
             }
             else
             {
-                // Ako rotacija nije uključena, samo vraćamo novi JWT s istim refresh tokenom
                 return new AuthResponse
                 {
                     Token = newJwtToken,
