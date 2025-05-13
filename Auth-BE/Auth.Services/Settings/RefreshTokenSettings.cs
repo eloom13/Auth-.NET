@@ -2,10 +2,10 @@
 {
     public class RefreshTokenSettings
     {
-        public int ExpirationInDays { get; set; } = 7;
-        public int MaxRefreshCount { get; set; } = 100;
-        public int MaxActiveSessionsPerUser { get; set; } = 5;
-        public bool EnableTokenRotation { get; set; } = true;
-        public bool DetectTokenReuse { get; set; } = true;
+        public int ExpirationInDays { get; set; }
+        public int MaxRefreshCount { get; set; }
+        public int MaxActiveSessionsPerUser { get; set; }
+        public bool EnableTokenRotation { get; set; }
+        public bool DetectTokenReuse { get; set; }
     }
 }

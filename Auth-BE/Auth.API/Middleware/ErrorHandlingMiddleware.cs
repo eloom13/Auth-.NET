@@ -37,7 +37,7 @@ namespace Auth.API.Middleware
 
             if (exception is AppExceptions appException)
             {
-                _logger.LogWarning("Application exception: {Message}", appException.Message);
+                _logger.LogWarning("Application error: {Message}", appException.Message);
 
                 code = exception switch
                 {
@@ -46,6 +46,7 @@ namespace Auth.API.Middleware
                     ForbiddenAccessException => HttpStatusCode.Forbidden,
                     AuthenticationException => HttpStatusCode.Unauthorized,
                     ConflictException => HttpStatusCode.Conflict,
+                    SecurityException => HttpStatusCode.Unauthorized,
                     _ => HttpStatusCode.InternalServerError
                 };
 
@@ -53,7 +54,7 @@ namespace Auth.API.Middleware
             }
             else
             {
-                _logger.LogError(exception, "UNHANDLED EXCEPTION: {Message}", exception.Message);
+                _logger.LogError("Unexpected error: {Message}", exception.Message);
 
                 errorResponse = _environment.IsDevelopment()
                     ? ApiResponse<object>.ErrorResponse(

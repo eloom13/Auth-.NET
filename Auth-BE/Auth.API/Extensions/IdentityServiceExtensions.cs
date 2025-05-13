@@ -51,8 +51,17 @@ namespace Auth.API.Extensions
                 opts.Secret = secret;
                 opts.Issuer = issuer;
                 opts.Audience = audience;
-                opts.ExpirationInMinutes = 1; // TESTING
+                opts.ExpirationInMinutes = 15; // TESTING
                 opts.RefreshTokenExpirationInDays = 7;
+            });
+
+            services.Configure<RefreshTokenSettings>(opts =>
+            {
+                opts.ExpirationInDays = 7;
+                opts.MaxRefreshCount = 100;
+                opts.MaxActiveSessionsPerUser = 5;
+                opts.EnableTokenRotation = true;
+                opts.DetectTokenReuse = true;
             });
 
             var key = Encoding.ASCII.GetBytes(secret);

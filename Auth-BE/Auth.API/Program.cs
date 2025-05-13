@@ -3,7 +3,6 @@ using Auth.API.Middleware;
 using Auth.API.Seed;
 using Auth.Services.Interfaces;
 using Auth.Services.Services;
-using Auth.Services.Settings;
 using DotNetEnv;
 using Mapster;
 
@@ -29,9 +28,6 @@ builder.Services.AddMapster();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-
-// U Program.cs
-builder.Services.Configure<RefreshTokenSettings>(builder.Configuration.GetSection("RefreshToken"));
 
 // Cookie settings
 builder.Services.ConfigureApplicationCookie(options =>
