@@ -1,1 +1,10 @@
 /* You can add global styles to this file, and also import other style files */
+:root {
+  --body:#000;
+  --pixly-color:#02A388;
+  --pixly-color-hover:#027d65;
+  --pixly-text-primary-color: #4A4A4A;
+  --pixly-text-primary-color-hover: #191919;
+  --pixly-text-secondary-color: #606060;
+  --pixly-backround-color:#f8f8f8;
+}

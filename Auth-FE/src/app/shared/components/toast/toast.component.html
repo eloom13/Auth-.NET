@@ -1,0 +1,19 @@
+<div class="toast-container position-fixed top-0 end-0 p-3">
+  <div *ngFor="let toast of toasts$ | async" class="toast show" role="alert" [class]="getBackgroundClass(toast.type)" aria-live="assertive" aria-atomic="true">
+    <div class="toast-header">
+      <i [class]="getIconClass(toast.type)" class="me-2"></i>
+      <strong class="me-auto">
+        <ng-container [ngSwitch]="toast.type">
+          <ng-container *ngSwitchCase="'success'">Success</ng-container>
+          <ng-container *ngSwitchCase="'error'">Error</ng-container>
+          <ng-container *ngSwitchCase="'warning'">Warning</ng-container>
+          <ng-container *ngSwitchCase="'info'">Information</ng-container>
+        </ng-container>
+      </strong>
+      <button type="button" class="btn-close" (click)="removeToast(toast.id)" aria-label="Close"></button>
+    </div>
+    <div class="toast-body">
+      {{ toast.message }}
+    </div>
+  </div>
+</div>

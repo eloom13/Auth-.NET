@@ -1,0 +1,19 @@
+:host {
+  width: 100%;
+}
+
+.form-control:focus {
+  border-color: var(--pixly-color);
+}
+
+label.required::after {
+  content: "*";
+  color: #dc3545;
+  margin-left: 2px;
+}
+
+.invalid-feedback {
+  color: #dc3545;
+  font-size: 80%;
+  margin-top: 0.25rem;
+}
