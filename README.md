@@ -1,4 +1,4 @@
-# Auth-BE: .NET Authentication Backend
+.NET Authentication
 
 A robust authentication API built with ASP.NET Core 8, implementing modern security practices including JWT authentication, refresh token rotation, and multi-factor authentication.
 
