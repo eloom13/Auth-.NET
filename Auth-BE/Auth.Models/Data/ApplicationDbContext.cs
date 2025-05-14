@@ -20,7 +20,7 @@ namespace Auth.Models.Data
 
             //builder.Ignore<IdentityUserClaim<string>>();
             builder.Ignore<IdentityUserLogin<string>>();
-            builder.Ignore<IdentityUserToken<string>>();
+            //builder.Ignore<IdentityUserToken<string>>();
             builder.Ignore<IdentityRoleClaim<string>>();
             builder.Ignore<IdentityRole<string>>();
 
