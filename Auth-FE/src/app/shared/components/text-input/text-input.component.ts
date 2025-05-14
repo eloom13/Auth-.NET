@@ -1,11 +1,12 @@
 import {Component, Input, Self} from '@angular/core';
 import {FormControl, NgControl, ReactiveFormsModule} from '@angular/forms';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-text-input',
   standalone: true,
   imports: [
-    ReactiveFormsModule
+    ReactiveFormsModule, CommonModule
   ],
   templateUrl: './text-input.component.html',
   styleUrl: './text-input.component.css'

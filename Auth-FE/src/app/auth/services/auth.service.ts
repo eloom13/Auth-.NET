@@ -15,17 +15,20 @@ export class AuthService {
   currentUser$ = this.currentUserSource.asObservable();
 
   constructor(private http: HttpClient, private router: Router) {
-    this.loadCurrentUser();
+    //this.loadCurrentUser();
   }
 
   // Load user from local storage
+
   loadCurrentUser() {
-    const token = localStorage.getItem('token');
+    /*const token = localStorage.getItem('token');
     if (!token) {
       this.currentUserSource.next(null);
       return;
     }
+    */
 
+    /*
     this.getCurrentUser().subscribe({
       next: user => {
         if (user) {
@@ -37,6 +40,8 @@ export class AuthService {
         localStorage.removeItem('token');
       }
     });
+    */
+
   }
 
   // Register new user
@@ -45,13 +50,13 @@ export class AuthService {
       .pipe(
         tap(response => {
           if (response.success && response.data.token) {
-            localStorage.setItem('token', response.data.token);
+            //localStorage.setItem('token', response.data.token);
             this.loadCurrentUser();
           }
         })
       );
   }
-
+/*
   // Login user
   login(values: any): Observable<ApiResponse<any>> {
     return this.http.post<ApiResponse<any>>(`${this.baseUrl}/login`, values)
@@ -137,4 +142,5 @@ export class AuthService {
   isAuthenticated(): boolean {
     return !!this.currentUserValue;
   }
+  */
 }

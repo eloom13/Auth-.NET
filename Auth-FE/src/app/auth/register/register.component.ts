@@ -1,4 +1,3 @@
-// src/app/auth/components/register/register.component.ts
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -35,7 +34,7 @@ export class RegisterComponent implements OnInit {
 
   ngOnInit(): void {
     this.initForm();
-    this.setupFormListeners();
+    //this.setupFormListeners();
   }
 
   initForm(): void {
@@ -57,6 +56,7 @@ export class RegisterComponent implements OnInit {
     }, { validators: CustomValidators.passwordMatchValidator });
   }
 
+  /*
   setupFormListeners(): void {
     this.registerForm.get('email')?.valueChanges.subscribe(email => {
       if (email && this.registerForm.get('email')?.valid) {
@@ -74,7 +74,9 @@ export class RegisterComponent implements OnInit {
       }
     });
   }
+  */
 
+  /*
   checkEmail(email: string): void {
     this.authService.checkEmail(email).subscribe({
       next: (response) => {
@@ -104,6 +106,7 @@ export class RegisterComponent implements OnInit {
       }
     });
   }
+  */
 
   togglePasswordVisibility(): void {
     this.showPassword = !this.showPassword;

@@ -2,14 +2,14 @@ import {Component, EventEmitter, Input, Output, Self} from '@angular/core';
 
 import {FormControl, NgControl, ReactiveFormsModule} from '@angular/forms';
 import {NgClass} from '@angular/common';
-
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-password-input',
   standalone: true,
   imports: [
     ReactiveFormsModule,
-    NgClass
+    CommonModule
   ],
   templateUrl: './password-input.component.html',
   styleUrl: './password-input.component.css'
@@ -77,6 +77,4 @@ export class PasswordInputComponent {
     if (strength <= 4) return 'medium';
     return 'strong';
   }
-
-  protected readonly test = module
 }
