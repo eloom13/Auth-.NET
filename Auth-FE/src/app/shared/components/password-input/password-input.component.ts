@@ -1,15 +1,14 @@
 import {Component, EventEmitter, Input, Output, Self} from '@angular/core';
-
 import {FormControl, NgControl, ReactiveFormsModule} from '@angular/forms';
-import {NgClass} from '@angular/common';
-import { CommonModule } from '@angular/common';
+import {NgClass, NgIf} from '@angular/common';
 
 @Component({
   selector: 'app-password-input',
   standalone: true,
   imports: [
     ReactiveFormsModule,
-    CommonModule
+    NgClass,
+    NgIf
   ],
   templateUrl: './password-input.component.html',
   styleUrl: './password-input.component.css'
@@ -38,6 +37,11 @@ export class PasswordInputComponent {
     this.toggleVisibility.emit();
   }
 
+  get showError(): boolean {
+    return (this.control?.touched || this.control?.dirty) &&
+      (this.control?.invalid || this.showPasswordMatchError);
+  }
+
   get errorMessage(): string {
     if (this.showPasswordMatchError) {
       return 'Passwords do not match';
@@ -58,10 +62,6 @@ export class PasswordInputComponent {
   }
 
   // For password strength indicators
-  get hasErrors(): boolean {
-    return !!this.control?.errors && (this.control?.touched || this.control?.dirty);
-  }
-
   get passwordStrength(): 'weak' | 'medium' | 'strong' | 'empty' {
     if (!this.control?.value) return 'empty';
 

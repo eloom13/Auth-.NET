@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, map, tap } from 'rxjs';
 import { Router } from '@angular/router';
 import { environment } from '../../../environments/environment';
-import { User } from '../models/user';
+import {RegisterRequest, User} from '../models/user';
 import { ApiResponse } from '../models/api-response';
 
 @Injectable({
@@ -45,7 +45,7 @@ export class AuthService {
   }
 
   // Register new user
-  register(values: any): Observable<ApiResponse<any>> {
+  register(values: RegisterRequest): Observable<ApiResponse<any>> {
     return this.http.post<ApiResponse<any>>(`${this.baseUrl}/register`, values)
       .pipe(
         tap(response => {

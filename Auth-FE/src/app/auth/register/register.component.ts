@@ -34,14 +34,12 @@ export class RegisterComponent implements OnInit {
 
   ngOnInit(): void {
     this.initForm();
-    //this.setupFormListeners();
   }
 
   initForm(): void {
     this.registerForm = this.fb.group({
       firstName: [null, [Validators.required, Validators.minLength(2), Validators.maxLength(20)]],
       lastName: [null, [Validators.required, Validators.minLength(2), Validators.maxLength(20)]],
-      username: [null, [Validators.required, Validators.minLength(5), Validators.maxLength(20)]],
       email: [null, [Validators.required, Validators.email]],
       password: [null, [
         Validators.required,
@@ -56,58 +54,6 @@ export class RegisterComponent implements OnInit {
     }, { validators: CustomValidators.passwordMatchValidator });
   }
 
-  /*
-  setupFormListeners(): void {
-    this.registerForm.get('email')?.valueChanges.subscribe(email => {
-      if (email && this.registerForm.get('email')?.valid) {
-        this.checkEmail(email);
-      } else {
-        this.emailError = '';
-      }
-    });
-
-    this.registerForm.get('username')?.valueChanges.subscribe(username => {
-      if (username && this.registerForm.get('username')?.valid) {
-        this.checkUsername(username);
-      } else {
-        this.usernameError = '';
-      }
-    });
-  }
-  */
-
-  /*
-  checkEmail(email: string): void {
-    this.authService.checkEmail(email).subscribe({
-      next: (response) => {
-        if (!response.available) {
-          this.emailError = response.message;
-        } else {
-          this.emailError = '';
-        }
-      },
-      error: (err) => {
-        console.error('Error checking email', err);
-      }
-    });
-  }
-
-  checkUsername(username: string): void {
-    this.authService.checkUsername(username).subscribe({
-      next: (response) => {
-        if (!response.available) {
-          this.usernameError = response.message;
-        } else {
-          this.usernameError = '';
-        }
-      },
-      error: (err) => {
-        console.error('Error checking username', err);
-      }
-    });
-  }
-  */
-
   togglePasswordVisibility(): void {
     this.showPassword = !this.showPassword;
   }
@@ -117,6 +63,8 @@ export class RegisterComponent implements OnInit {
   }
 
   onSubmit(): void {
+    this.markFormGroupTouched(this.registerForm);
+
     if (this.registerForm.valid && !this.emailError && !this.usernameError) {
       this.isLoading = true;
       const formData = this.registerForm.value;
@@ -124,7 +72,6 @@ export class RegisterComponent implements OnInit {
       this.authService.register(formData).subscribe({
         next: (response) => {
           this.toastService.success('Registration successful! Please check your email to verify your account.');
-          this.router.navigate(['/auth/verify-email']);
         },
         error: (error) => {
           this.isLoading = false;
@@ -134,15 +81,15 @@ export class RegisterComponent implements OnInit {
         }
       });
     } else {
-      this.markFormGroupTouched(this.registerForm);
       this.toastService.error('Please fix the errors in the form before submitting.');
     }
   }
 
-  // Helper method to mark all controls as touched
+// Helper method to mark all controls as touched - works recursively for nested form groups
   markFormGroupTouched(formGroup: FormGroup) {
     Object.values(formGroup.controls).forEach(control => {
       control.markAsTouched();
+      control.markAsDirty();
 
       if (control instanceof FormGroup) {
         this.markFormGroupTouched(control);

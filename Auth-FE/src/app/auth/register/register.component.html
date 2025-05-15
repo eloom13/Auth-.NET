@@ -35,18 +35,6 @@
                 </div>
               </div>
 
-              <!-- Username Field -->
-              <div class="mb-3">
-                <app-text-input
-                  formControlName="username"
-                  [label]="'Username'"
-                  [isRequired]="true"
-                  [minLength]="5"
-                  [maxLength]="20"
-                  [customError]="usernameError">
-                </app-text-input>
-              </div>
-
               <!-- Email Field -->
               <div class="mb-3">
                 <app-text-input
@@ -87,7 +75,7 @@
               <div class="mb-3">
                 <app-submit-button
                   [isLoading]="isLoading"
-                  [isDisabled]="registerForm.invalid || !!emailError || !!usernameError"
+                  [isDisabled]="registerForm.invalid || !!emailError"
                   [text]="'Sign Up'">
                 </app-submit-button>
               </div>

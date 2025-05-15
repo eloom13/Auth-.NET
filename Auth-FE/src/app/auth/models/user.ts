@@ -9,3 +9,11 @@ export interface User {
   isTwoFactorEnabled: boolean;
   emailConfirmed: boolean;
 }
+
+export interface RegisterRequest{
+  email: string;
+  password: string;
+  confirmPassword: string;
+  firstName: string;
+  lastName: string;
+}
