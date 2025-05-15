@@ -8,6 +8,7 @@ import {CustomValidators} from '../validators/custom-validators';
 import {TextInputComponent} from '../../shared/components/text-input/text-input.component';
 import {PasswordInputComponent} from '../../shared/components/password-input/password-input.component';
 import {SubmitButtonComponent} from '../../shared/components/submit-button/submit-button.component';
+import {RegisterRequest} from '../models/user';
 
 
 @Component({
@@ -52,6 +53,14 @@ export class RegisterComponent implements OnInit {
       ]],
       confirmPassword: [null, Validators.required],
     }, { validators: CustomValidators.passwordMatchValidator });
+
+    this.registerForm.patchValue({
+      firstName: 'Elmir',
+      lastName: 'Mujkic',
+      email: 'teampixly@gmail.com',
+      password: 'Elmir123@',
+      confirmPassword: 'Elmir123@'
+    })
   }
 
   togglePasswordVisibility(): void {
@@ -60,29 +69,6 @@ export class RegisterComponent implements OnInit {
 
   toggleConfirmPasswordVisibility(): void {
     this.showConfirmPassword = !this.showConfirmPassword;
-  }
-
-  onSubmit(): void {
-    this.markFormGroupTouched(this.registerForm);
-
-    if (this.registerForm.valid && !this.emailError && !this.usernameError) {
-      this.isLoading = true;
-      const formData = this.registerForm.value;
-
-      this.authService.register(formData).subscribe({
-        next: (response) => {
-          this.toastService.success('Registration successful! Please check your email to verify your account.');
-        },
-        error: (error) => {
-          this.isLoading = false;
-        },
-        complete: () => {
-          this.isLoading = false;
-        }
-      });
-    } else {
-      this.toastService.error('Please fix the errors in the form before submitting.');
-    }
   }
 
 // Helper method to mark all controls as touched - works recursively for nested form groups
@@ -95,5 +81,31 @@ export class RegisterComponent implements OnInit {
         this.markFormGroupTouched(control);
       }
     });
+  }
+
+  onSubmit(): void {
+    this.markFormGroupTouched(this.registerForm);
+
+    if (this.registerForm.valid && !this.emailError && !this.usernameError) {
+      this.isLoading = true;
+
+      const registerRequest: RegisterRequest = this.registerForm.value;
+
+      this.authService.register(registerRequest).subscribe({
+        next: (response) => {
+          this.toastService.success('Registration successful!');
+        },
+        error: (error) => {
+          this.isLoading = false;
+          // Error is handled globally in the interceptor
+        },
+        complete: () => {
+          this.isLoading = false;
+        }
+      });
+
+    } else {
+      this.toastService.error('Please fix the errors in the form before submitting.');
+    }
   }
 }
